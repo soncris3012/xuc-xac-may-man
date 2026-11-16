@@ -405,7 +405,7 @@ export default function App() {
       {/* Footer */}
       <footer className="w-full border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500">
         <p>
-          Trò chơi mô phỏng xác suất xúc xắc mang tính chất giải trí lành mạnh. Điểm số và xu chỉ dùng trong game.
+          Game vui xúc xắc giải trí vui vẻ. Điểm số và xu chỉ dùng trong game.
         </p>
       </footer>
 

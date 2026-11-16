@@ -63,7 +63,7 @@ export default function Header({
                 <span className="hidden sm:inline">{isSupabaseConfigured ? 'Supabase' : 'Offline'}</span>
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">Mini-game mô phỏng xác suất giải trí lành mạnh</p>
+            <p className="text-[11px] text-slate-400">Game vui xúc xắc may mắn giải trí</p>
           </div>
         </div>
 

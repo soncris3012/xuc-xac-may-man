@@ -1,6 +1,6 @@
-# Xúc Xắc May Mắn (Lucky Dice) 🎲
+# Xúc Xắc May Mắn - Game Vui 🎲
 
-Trò chơi mô phỏng xác suất xúc xắc 3 hột (Sic Bo / Tài Xỉu) giải trí vui vẻ, giao diện hiện đại được xây dựng bằng **ReactJS**, **Tailwind CSS**, và tích hợp cơ sở dữ liệu **Supabase**. Sẵn sàng để triển khai trực tiếp lên **Vercel**.
+Game vui xúc xắc may mắn giải trí cùng bạn bè, giao diện hiện đại được xây dựng bằng **ReactJS**, **Tailwind CSS**, và tích hợp cơ sở dữ liệu **Supabase**. Sẵn sàng để triển khai trực tiếp lên **Vercel**.
 
 ---
 
