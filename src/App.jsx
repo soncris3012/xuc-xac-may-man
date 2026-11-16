@@ -5,17 +5,18 @@ import BowlShaker from './components/BowlShaker';
 import BettingTable from './components/BettingTable';
 import ChipSelector from './components/ChipSelector';
 import HistoryBoard from './components/HistoryBoard';
+import LivePlayers from './components/LivePlayers';
 import GiftCodeModal from './components/GiftCodeModal';
 import LeaderboardModal from './components/LeaderboardModal';
 import { DBService } from './services/supabase';
 import { sounds } from './services/audio';
-import { Play, RotateCcw, AlertTriangle, Sparkles, Clock, Dices } from 'lucide-react';
+import { Play, Sparkles, Clock, Dices, DollarSign } from 'lucide-react';
 
 export default function App() {
-  // User profile & storage state
+  // User profile state
   const [profile, setProfile] = useState({
     id: 'guest',
-    username: 'Người Chơi',
+    username: 'VIP_Player',
     balance: 100000,
   });
 
@@ -38,7 +39,6 @@ export default function App() {
   const [gameMode, setGameMode] = useState('manual');
   const [timerCount, setTimerCount] = useState(30);
 
-  // Ref for timer
   const timerRef = useRef(null);
 
   // Initialize data on mount
@@ -64,12 +64,10 @@ export default function App() {
 
     timerRef.current = setInterval(() => {
       setTimerCount((prev) => {
-        if (prev === 5 && !isRolling) {
-          // At 5 seconds left, start rolling!
+        if (prev === 6 && !isRolling) {
           triggerRoll(true);
         }
         if (prev <= 1) {
-          // Reset timer to 30s
           return 30;
         }
         return prev - 1;
@@ -84,13 +82,13 @@ export default function App() {
   // Calculate total bet placed
   const totalBetAmount = Object.values(currentBets).reduce((a, b) => a + b, 0);
 
-  // Handle placing a bet on a zone
+  // Place bet on a zone
   const handlePlaceBet = (zoneKey) => {
     if (isRolling || (!isRevealed && gameMode === 'manual')) return;
 
     if (profile.balance < totalBetAmount + selectedChip) {
       sounds.playClick();
-      alert('Số dư Xu của bạn không đủ để đặt thêm!');
+      alert('Số dư $ của bạn không đủ để đặt thêm!');
       return;
     }
 
@@ -129,7 +127,6 @@ export default function App() {
   const handleAllIn = () => {
     if (isRolling || profile.balance <= 0) return;
     sounds.playChip();
-    // Default put all-in on TAI if empty, or split evenly
     const activeKeys = Object.keys(currentBets);
     if (activeKeys.length === 1) {
       setCurrentBets({ [activeKeys[0]]: profile.balance });
@@ -142,13 +139,11 @@ export default function App() {
   const triggerRoll = (isAuto = false) => {
     if (isRolling) return;
 
-    // Check if player has placed bet in manual mode
     if (!isAuto && totalBetAmount === 0) {
-      alert('Vui lòng đặt cược ít nhất một cửa trước khi lắc xúc xắc!');
+      alert('Vui lòng chọn cửa cược trước khi lắc xúc xắc!');
       return;
     }
 
-    // Deduct placed bets from balance
     const updatedBalance = profile.balance - totalBetAmount;
     setProfile((prev) => ({ ...prev, balance: Math.max(0, updatedBalance) }));
 
@@ -159,7 +154,7 @@ export default function App() {
 
     // Roll animation duration: 1.8 seconds
     setTimeout(() => {
-      // Fair random roll: 3 dice, each 1-6
+      // 3 independent fair dice
       const d1 = Math.floor(Math.random() * 6) + 1;
       const d2 = Math.floor(Math.random() * 6) + 1;
       const d3 = Math.floor(Math.random() * 6) + 1;
@@ -168,10 +163,10 @@ export default function App() {
       setIsRolling(false);
 
       if (isAuto) {
-        // Automatically reveal after 1 second in timed mode
+        // Auto reveal after 3 seconds in timed mode
         setTimeout(() => {
           handleReveal([d1, d2, d3], updatedBalance);
-        }, 1200);
+        }, 2800);
       }
     }, 1800);
   };
@@ -181,7 +176,7 @@ export default function App() {
     if (isRevealed || isRolling) return;
 
     const currentDice = forcedDice || dice;
-    const currentBaseBal = baseBalance !== null ? baseBalance : (profile.balance);
+    const currentBaseBal = baseBalance !== null ? baseBalance : profile.balance;
 
     const d1 = currentDice[0];
     const d2 = currentDice[1];
@@ -237,14 +232,14 @@ export default function App() {
     const isWinner = totalWinPayout > 0;
     const newFinalBalance = currentBaseBal + totalWinPayout;
 
-    // Update profile
+    // Update profile balance
     DBService.updateBalance(profile, newFinalBalance, isWinner).then((updated) => {
       setProfile(updated);
     });
 
-    // Record round to history & Supabase
+    // Record round
     const roundRecord = {
-      username: profile.username || 'Khách',
+      username: profile.username || 'VIP_Player',
       dice_1: d1,
       dice_2: d2,
       dice_3: d3,
@@ -261,32 +256,31 @@ export default function App() {
       setHistory(newHistory);
     });
 
-    // Handle Win celebration
+    // Win fanfare
     if (isWinner) {
       sounds.playWin();
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 100,
+        spread: 80,
         origin: { y: 0.6 },
       });
       setRoundNotification({
         type: 'win',
-        text: `🎉 Chúc mừng! Bạn đã thắng +${totalWinPayout.toLocaleString('vi-VN')} Xu!`,
+        text: `🎉 Thắng lớn! Bạn nhận được +${totalWinPayout.toLocaleString('vi-VN')} $!`,
       });
     } else if (totalBetAmount > 0) {
       setRoundNotification({
         type: 'lose',
-        text: `May mắn lần sau! Bạn chưa trúng phiên này.`,
+        text: `Chưa may mắn! Chúc bạn thắng lớn ở ván kế tiếp.`,
       });
     }
 
-    // Reset bets for next round
     setCurrentBets({});
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 selection:bg-amber-500 selection:text-slate-950">
-      {/* Top Navigation */}
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#021812] via-[#042018] to-slate-950 text-slate-100 selection:bg-amber-500 selection:text-slate-950">
+      {/* Top Header */}
       <Header
         profile={profile}
         onProfileUpdate={setProfile}
@@ -296,17 +290,17 @@ export default function App() {
         setCanClaimDaily={setCanClaimDaily}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Game Area (Plate, Dice, Controls) */}
+      {/* Main Casino Floor */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column (Col 1-7): Shaker, Squeeze Bowl, Betting Table, Chips */}
         <section className="lg:col-span-7 flex flex-col items-center gap-4">
-          {/* Game Mode Selector Bar */}
-          <div className="w-full flex items-center justify-between bg-slate-900/60 border border-slate-800 p-1.5 rounded-2xl">
+          {/* Mode Selector */}
+          <div className="w-full flex items-center justify-between bg-slate-950/80 border border-amber-500/30 p-1.5 rounded-2xl shadow-xl">
             <button
               onClick={() => setGameMode('manual')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition ${
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
                 gameMode === 'manual'
-                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -316,9 +310,9 @@ export default function App() {
 
             <button
               onClick={() => setGameMode('timed')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition ${
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
                 gameMode === 'timed'
-                  ? 'bg-amber-500 text-slate-950 shadow-md'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -327,7 +321,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* Interactive Shaker & Plate */}
+          {/* Squeeze Bowl Shaker with 360 degree drag */}
           <BowlShaker
             dice={dice}
             isRolling={isRolling}
@@ -335,20 +329,20 @@ export default function App() {
             onReveal={() => handleReveal()}
             roundTimeLeft={gameMode === 'timed' ? timerCount : null}
             statusMessage={
-              isRolling ? 'Đang Lắc...' : timerCount <= 5 && gameMode === 'timed' ? 'Đang mở bát...' : ''
+              isRolling ? 'Đang Lắc...' : timerCount <= 6 && gameMode === 'timed' ? 'Đang nặn mở...' : ''
             }
           />
 
-          {/* Notification Toast */}
+          {/* Toast Notification */}
           {roundNotification && (
             <div
-              className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 animate-bounce ${
+              className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 animate-bounce ${
                 roundNotification.type === 'win'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-lg'
-                  : 'bg-slate-800 text-slate-300 border border-slate-700'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-2 border-emerald-500/50 shadow-xl shadow-emerald-950/60'
+                  : 'bg-slate-900 text-slate-300 border border-slate-700'
               }`}
             >
-              <Sparkles className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-yellow-400" />
               <span>{roundNotification.text}</span>
             </div>
           )}
@@ -359,7 +353,7 @@ export default function App() {
               <button
                 onClick={() => triggerRoll(false)}
                 disabled={isRolling || !isRevealed}
-                className="w-full max-w-sm py-4 rounded-2xl font-black text-base tracking-wider uppercase bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-xl shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-98 flex items-center justify-center gap-2"
+                className="w-full max-w-sm py-3.5 rounded-2xl font-black text-base tracking-wider uppercase bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 shadow-2xl shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-98 flex items-center justify-center gap-2 border-2 border-yellow-300"
               >
                 <Play className="w-5 h-5 fill-slate-950" />
                 <span>{isRolling ? 'Đang Lắc Xúc Xắc...' : 'LẮC XÚC XẮC'}</span>
@@ -367,7 +361,7 @@ export default function App() {
             </div>
           )}
 
-          {/* Chip Selector */}
+          {/* Casino Chip Selector */}
           <ChipSelector
             selectedChip={selectedChip}
             onSelectChip={setSelectedChip}
@@ -378,32 +372,37 @@ export default function App() {
             hasActiveBets={totalBetAmount > 0}
           />
 
-          {/* Total Placed Summary */}
+          {/* Total Placed Bet Bar */}
           {totalBetAmount > 0 && (
-            <div className="w-full text-center text-xs font-semibold text-slate-400">
-              Tổng tiền cược phiên này:{' '}
-              <span className="font-extrabold text-amber-400">{totalBetAmount.toLocaleString('vi-VN')} Xu</span>
+            <div className="w-full text-center text-xs font-bold text-amber-300 flex items-center justify-center gap-1">
+              <span>Tổng cược của bạn:</span>
+              <span className="font-black text-amber-400 text-sm">
+                ${totalBetAmount.toLocaleString('vi-VN')}
+              </span>
             </div>
           )}
-        </section>
 
-        {/* Right Column: Betting Table & History */}
-        <section className="lg:col-span-5 flex flex-col gap-4">
-          {/* Betting Zones */}
+          {/* Betting Zones Table */}
           <BettingTable
             currentBets={currentBets}
             onPlaceBet={handlePlaceBet}
             lastWinningBets={lastWinningBets}
             disabled={isRolling || (!isRevealed && gameMode === 'manual')}
           />
+        </section>
 
-          {/* History & Soi Cầu */}
+        {/* Right Column (Col 8-12): Realtime Players Board & Soi Cầu Đường */}
+        <section className="lg:col-span-5 flex flex-col gap-4">
+          {/* Live Players Realtime Board */}
+          <LivePlayers lastWinningBets={lastWinningBets} isRolling={isRolling} />
+
+          {/* Cầu Đường (Trend Line Chart & Bead Road) */}
           <HistoryBoard history={history} />
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500">
+      <footer className="w-full border-t border-amber-500/20 bg-slate-950/90 py-4 text-center text-xs text-slate-500">
         <p>
           Game vui xúc xắc giải trí vui vẻ. Điểm số và xu chỉ dùng trong game.
         </p>
