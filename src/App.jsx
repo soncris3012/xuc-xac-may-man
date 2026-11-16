@@ -40,6 +40,8 @@ export default function App() {
   const [timerCount, setTimerCount] = useState(30);
 
   const timerRef = useRef(null);
+  const isRollingRef = useRef(isRolling);
+  isRollingRef.current = isRolling;
 
   // Initialize data on mount
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function App() {
 
     timerRef.current = setInterval(() => {
       setTimerCount((prev) => {
-        if (prev === 6 && !isRolling) {
+        if (prev === 6 && !isRollingRef.current) {
           triggerRoll(true);
         }
         if (prev <= 1) {
@@ -77,7 +79,7 @@ export default function App() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [gameMode, currentBets, isRolling]);
+  }, [gameMode]);
 
   // Calculate total bet placed
   const totalBetAmount = Object.values(currentBets).reduce((a, b) => a + b, 0);

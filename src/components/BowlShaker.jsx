@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Dice from './Dice';
-import { Eye, RotateCw, Hand, Zap, Sparkles } from 'lucide-react';
-import { sounds } from '../services/audio';
+import { RotateCw, Zap } from 'lucide-react';
 
 export default function BowlShaker({
   dice = [1, 2, 3],
@@ -14,16 +13,12 @@ export default function BowlShaker({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
-  const lastSoundTime = useRef(0);
+  const rafRef = useRef(null);
 
   const total = dice[0] + dice[1] + dice[2];
   const isBao = dice[0] === dice[1] && dice[1] === dice[2];
   const isTai = total >= 11 && total <= 17;
   const isChan = total % 2 === 0;
-
-  // Calculate drag distance
-  const dragDistance = Math.hypot(dragOffset.x, dragOffset.y);
-  const peekPercent = Math.min(100, Math.round((dragDistance / 120) * 100));
 
   // Reset drag position when round starts or rolls
   useEffect(() => {
@@ -42,58 +37,56 @@ export default function BowlShaker({
     };
   };
 
-  // Pointer Move (Mouse & Touch window listener)
+  // Pointer Move (Optimized with requestAnimationFrame for 60fps/120fps smooth drag)
   useEffect(() => {
     const handlePointerMove = (e) => {
       if (!isDragging || isRevealed || isRolling) return;
 
-      const rawX = e.clientX - dragStartRef.current.x;
-      const rawY = e.clientY - dragStartRef.current.y;
-      const dist = Math.hypot(rawX, rawY);
-      const maxDist = 160;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
-      let newX = rawX;
-      let newY = rawY;
-      if (dist > maxDist) {
-        newX = (rawX / dist) * maxDist;
-        newY = (rawY / dist) * maxDist;
-      }
+      rafRef.current = requestAnimationFrame(() => {
+        const rawX = e.clientX - dragStartRef.current.x;
+        const rawY = e.clientY - dragStartRef.current.y;
+        const dist = Math.hypot(rawX, rawY);
+        const maxDist = 160;
 
-      setDragOffset({ x: newX, y: newY });
+        let newX = rawX;
+        let newY = rawY;
+        if (dist > maxDist) {
+          newX = (rawX / dist) * maxDist;
+          newY = (rawY / dist) * maxDist;
+        }
 
-      // Play scrape sound intermittently during nặn
-      const now = Date.now();
-      if (now - lastSoundTime.current > 120) {
-        sounds.playScrape();
-        lastSoundTime.current = now;
-      }
+        setDragOffset({ x: newX, y: newY });
 
-      // If dragged far enough (>125px), auto-reveal!
-      if (dist >= 125) {
-        setIsDragging(false);
-        onReveal();
-      }
+        // If dragged past 120px, reveal
+        if (dist >= 120) {
+          setIsDragging(false);
+          onReveal();
+        }
+      });
     };
 
     const handlePointerUp = () => {
       if (!isDragging) return;
       setIsDragging(false);
-      // If dragged more than 85px on release, reveal!
-      if (dragDistance > 85) {
+      const dist = Math.hypot(dragOffset.x, dragOffset.y);
+      if (dist > 80) {
         onReveal();
       }
     };
 
     if (isDragging) {
-      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointermove', handlePointerMove, { passive: true });
       window.addEventListener('pointerup', handlePointerUp);
     }
 
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, dragDistance, isRevealed, isRolling, onReveal]);
+  }, [isDragging, dragOffset, isRevealed, isRolling, onReveal]);
 
   return (
     <div className="relative w-full max-w-md mx-auto flex flex-col items-center">
@@ -125,20 +118,23 @@ export default function BowlShaker({
           </div>
         </div>
 
-        {/* The Draggable Squeeze Bowl Lid (Bát úp nặn 360 độ) */}
+        {/* The Draggable Squeeze Bowl Lid (Bát úp nặn 360 độ siêu mượt) */}
         <div
           onPointerDown={handlePointerDown}
           className={`absolute inset-4 rounded-full z-20 select-none cursor-grab active:cursor-grabbing ${
             isRolling ? 'animate-bounce shadow-2xl' : ''
           } ${
             !isRevealed
-              ? 'opacity-100 shadow-2xl transition-transform duration-75'
-              : 'opacity-0 -translate-y-36 scale-75 pointer-events-none transition-all duration-700'
+              ? isDragging
+                ? 'opacity-100 shadow-2xl'
+                : 'opacity-100 shadow-2xl transition-transform duration-200 ease-out'
+              : 'opacity-0 -translate-y-36 scale-75 pointer-events-none transition-all duration-500 ease-in-out'
           }`}
           style={{
             transform: !isRevealed
-              ? `translate(${dragOffset.x}px, ${dragOffset.y}px)`
-              : 'translate(0px, -150px)',
+              ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
+              : 'translate3d(0px, -150px, 0)',
+            willChange: isDragging ? 'transform' : 'auto',
             background: 'radial-gradient(circle at 35% 30%, #334155 0%, #1e293b 45%, #090d16 100%)',
             border: '6px solid #f59e0b',
             boxShadow:
@@ -153,26 +149,20 @@ export default function BowlShaker({
               <span className="text-slate-950 font-black text-2xl tracking-widest">$VIP$</span>
             </div>
 
-            <p className="text-amber-300 text-xs sm:text-sm font-black tracking-wider uppercase drop-shadow">
-              {isRolling ? 'Đang Lắc...' : isDragging ? `Đang Nặn (${peekPercent}%)` : 'Kéo để Nặn 360°'}
+            {/* Just "Nặn" as requested, no %, no subtext */}
+            <p className="text-amber-300 text-lg sm:text-xl font-black tracking-widest uppercase drop-shadow">
+              {isRolling ? 'Đang Lắc...' : 'Nặn'}
             </p>
-
-            {!isRolling && (
-              <span className="flex items-center gap-1.5 text-[11px] text-amber-200 bg-amber-950/80 px-3 py-1 rounded-full border border-amber-500/40 mt-1 shadow-md">
-                <Hand className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                <span>Kéo mọi hướng hoặc bấm Mở</span>
-              </span>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Squeeze Controls (Nút Mở Luôn & Chỉ báo Nặn) */}
+      {/* Instant Open Button */}
       {!isRevealed && !isRolling && (
         <div className="mt-3 flex items-center gap-2 animate-fade-in z-30">
           <button
             onClick={onReveal}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 transform active:scale-95 transition"
+            className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 shadow-lg shadow-amber-500/30 transform active:scale-95 transition"
           >
             <Zap className="w-4 h-4 fill-slate-950" />
             <span>MỞ THẲNG LUÔN</span>
