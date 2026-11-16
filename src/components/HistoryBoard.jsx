@@ -133,28 +133,8 @@ export default function HistoryBoard({ history = [] }) {
               stroke="#eab308"
               strokeDasharray="4 4"
               strokeWidth="1.2"
-              opacity="0.4"
+              opacity="0.25"
             />
-            <text
-              x={svgWidth - paddingX - 4}
-              y={paddingY + chartHeight * 0.5 - 4}
-              fill="#f43f5e"
-              fontSize="9"
-              fontWeight="bold"
-              textAnchor="end"
-            >
-              TÀI (≥11)
-            </text>
-            <text
-              x={svgWidth - paddingX - 4}
-              y={paddingY + chartHeight * 0.5 + 11}
-              fill="#3b82f6"
-              fontSize="9"
-              fontWeight="bold"
-              textAnchor="end"
-            >
-              XỈU (≤10)
-            </text>
 
             {/* Connecting Polyline */}
             {points.length > 1 && (
