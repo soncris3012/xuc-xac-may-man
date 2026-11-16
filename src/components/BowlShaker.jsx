@@ -20,14 +20,15 @@ export default function BowlShaker({
   const isTai = total >= 11 && total <= 17;
   const isChan = total % 2 === 0;
 
-  // Reset drag position when round starts or rolls
+  // Reset bowl to center when a new roll starts
   useEffect(() => {
-    if (isRolling || !isRevealed) {
+    if (isRolling) {
       setDragOffset({ x: 0, y: 0 });
+      setIsDragging(false);
     }
-  }, [isRolling, isRevealed]);
+  }, [isRolling]);
 
-  // Pointer Down (Mouse & Touch)
+  // Pointer Down (Mouse & Touch) - Can grab from current position and keep dragging
   const handlePointerDown = (e) => {
     if (isRevealed || isRolling) return;
     setIsDragging(true);
@@ -48,7 +49,8 @@ export default function BowlShaker({
         const rawX = e.clientX - dragStartRef.current.x;
         const rawY = e.clientY - dragStartRef.current.y;
         const dist = Math.hypot(rawX, rawY);
-        const maxDist = 160;
+        // Allow pulling completely off the dice cluster
+        const maxDist = 260;
 
         let newX = rawX;
         let newY = rawY;
@@ -59,8 +61,8 @@ export default function BowlShaker({
 
         setDragOffset({ x: newX, y: newY });
 
-        // If dragged past 120px, reveal
-        if (dist >= 120) {
+        // ONLY auto-reveal when pulled far enough to completely uncover all 3 dice (>220px)
+        if (dist >= 220) {
           setIsDragging(false);
           onReveal();
         }
@@ -70,10 +72,14 @@ export default function BowlShaker({
     const handlePointerUp = () => {
       if (!isDragging) return;
       setIsDragging(false);
-      const dist = Math.hypot(dragOffset.x, dragOffset.y);
-      if (dist > 80) {
+
+      // Check if pulled far enough to reveal completely
+      const currentDist = Math.hypot(dragOffset.x, dragOffset.y);
+      if (currentDist >= 220) {
         onReveal();
       }
+      // If NOT yet pulled enough (<220px), do NOT reveal!
+      // The bowl stays where user left it so they can grab it again and keep dragging!
     };
 
     if (isDragging) {
@@ -118,7 +124,7 @@ export default function BowlShaker({
           </div>
         </div>
 
-        {/* The Draggable Squeeze Bowl Lid (Bát úp nặn 360 độ siêu mượt) */}
+        {/* The Draggable Squeeze Bowl Lid (Bát úp nặn 360 độ) */}
         <div
           onPointerDown={handlePointerDown}
           className={`absolute inset-4 rounded-full z-20 select-none cursor-grab active:cursor-grabbing ${
@@ -127,13 +133,13 @@ export default function BowlShaker({
             !isRevealed
               ? isDragging
                 ? 'opacity-100 shadow-2xl'
-                : 'opacity-100 shadow-2xl transition-transform duration-200 ease-out'
-              : 'opacity-0 -translate-y-36 scale-75 pointer-events-none transition-all duration-500 ease-in-out'
+                : 'opacity-100 shadow-2xl transition-transform duration-150 ease-out'
+              : 'opacity-0 -translate-y-48 scale-75 pointer-events-none transition-all duration-500 ease-in-out'
           }`}
           style={{
             transform: !isRevealed
               ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)`
-              : 'translate3d(0px, -150px, 0)',
+              : 'translate3d(0px, -200px, 0)',
             willChange: isDragging ? 'transform' : 'auto',
             background: 'radial-gradient(circle at 35% 30%, #334155 0%, #1e293b 45%, #090d16 100%)',
             border: '6px solid #f59e0b',
@@ -149,7 +155,7 @@ export default function BowlShaker({
               <span className="text-slate-950 font-black text-2xl tracking-widest">$VIP$</span>
             </div>
 
-            {/* Just "Nặn" as requested, no %, no subtext */}
+            {/* Just "Nặn" */}
             <p className="text-amber-300 text-lg sm:text-xl font-black tracking-widest uppercase drop-shadow">
               {isRolling ? 'Đang Lắc...' : 'Nặn'}
             </p>
