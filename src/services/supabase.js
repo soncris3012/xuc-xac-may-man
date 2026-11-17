@@ -1,227 +1,431 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const DEFAULT_SUPABASE_URL = 'https://bnvnjuqsekqwqmoiqvcl.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_EYHOqPwRcb9tSCFxYfBR7Q_kHKF-det';
 
-export const isSupabaseConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  !supabaseUrl.includes('your-project') &&
-  supabaseUrl.startsWith('http')
-);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
 
-export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
-  : null;
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
 
-// LocalStorage Fallback Storage Keys
-const STORAGE_KEYS = {
-  PROFILE: 'xucxac_user_profile',
-  HISTORY: 'xucxac_game_history',
-  LEADERBOARD: 'xucxac_leaderboard',
-  REDEEMED_CODES: 'xucxac_redeemed_codes',
-  LAST_DAILY: 'xucxac_last_daily_claim',
+const USER_SESSION_KEY = 'xucxac_user_id';
+
+export const SUM_MULTIPLIERS = {
+  4: 50, 17: 50,
+  5: 20, 16: 20,
+  6: 15, 15: 15,
+  7: 12, 14: 12,
+  8: 8, 13: 8,
+  9: 6, 10: 6, 11: 6, 12: 6,
 };
 
-// Default Guest Profile
-const DEFAULT_PROFILE = {
-  id: 'guest-player',
-  username: 'Người Chơi May Mắn',
-  balance: 100000,
-  total_played: 0,
-  total_won: 0,
-};
+function getVietnamTodayString() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
 
-// Initial Mock Leaderboard
-const DEFAULT_LEADERBOARD = [
-  { username: 'ĐạiGiaXúcXắc', balance: 5800000, total_won: 142 },
-  { username: 'ThầnMayMắn99', balance: 3450000, total_won: 89 },
-  { username: 'LắcLàTrúng', balance: 2100000, total_won: 65 },
-  { username: 'VuaTaiXiu', balance: 1850000, total_won: 51 },
-  { username: 'BảoBốiDora', balance: 920000, total_won: 28 },
-];
+export function calculateBetPayout(betZone, betAmount, winningZones) {
+  if (!winningZones.includes(betZone)) return 0;
+  if (betZone === 'BAO') return betAmount * 31;
+  if (betZone.startsWith('SUM_')) {
+    const targetSum = parseInt(betZone.replace('SUM_', ''), 10);
+    const rate = SUM_MULTIPLIERS[targetSum] || 6;
+    return betAmount * (rate + 1);
+  }
+  return betAmount * 2;
+}
 
 export const DBService = {
-  // Get or initialize user profile
-  async getProfile() {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        let storedId = localStorage.getItem('xucxac_user_uuid');
-        if (storedId) {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', storedId)
-            .single();
+  // Đăng ký tài khoản mới trên Supabase
+  async register(username, password) {
+    const { data, error } = await supabase.rpc('xucxac_register', {
+      p_username: username,
+      p_password: password,
+    });
 
-          if (data && !error) return data;
+    if (error) {
+      return { success: false, message: error.message || 'Lỗi kết nối máy chủ Supabase!' };
+    }
+
+    if (data?.success && data?.user?.id) {
+      localStorage.setItem(USER_SESSION_KEY, data.user.id);
+    }
+    return data;
+  },
+
+  // Đăng nhập tài khoản
+  async login(username, password) {
+    const { data, error } = await supabase.rpc('xucxac_login', {
+      p_username: username,
+      p_password: password,
+    });
+
+    if (error) {
+      return { success: false, message: error.message || 'Lỗi kết nối máy chủ Supabase!' };
+    }
+
+    if (data?.success && data?.user?.id) {
+      localStorage.setItem(USER_SESSION_KEY, data.user.id);
+    }
+    return data;
+  },
+
+  // Đăng xuất
+  async logout(userId) {
+    localStorage.removeItem(USER_SESSION_KEY);
+    if (!userId) return;
+    await supabase
+      .from('xucxac_users')
+      .update({
+        is_online: false,
+        last_seen_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+  },
+
+  // Tải thông tin người chơi hiện tại từ phiên lưu cục bộ
+  async getCurrentUser() {
+    const storedId = localStorage.getItem(USER_SESSION_KEY);
+    if (!storedId) return null;
+
+    const { data, error } = await supabase
+      .from('xucxac_users')
+      .select('*')
+      .eq('id', storedId)
+      .single();
+
+    if (error || !data) {
+      localStorage.removeItem(USER_SESSION_KEY);
+      return null;
+    }
+
+    await supabase
+      .from('xucxac_users')
+      .update({
+        is_online: true,
+        last_seen_at: new Date().toISOString(),
+      })
+      .eq('id', storedId);
+
+    return { ...data, is_online: true };
+  },
+
+  // Ghi nhận lệnh đặt cược trực tiếp lên bảng xucxac_bets (Realtime cho cả phòng thấy)
+  async placeLiveBet({ userId, username, vipLevel = 1, betZone, betAmount }) {
+    if (!userId || betAmount <= 0) return null;
+
+    const { data: existing } = await supabase
+      .from('xucxac_bets')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('bet_zone', betZone)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('xucxac_bets')
+        .update({
+          bet_amount: existing.bet_amount + betAmount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    const { data, error } = await supabase
+      .from('xucxac_bets')
+      .insert([
+        {
+          user_id: userId,
+          username,
+          vip_level: vipLevel,
+          bet_zone: betZone,
+          bet_amount: betAmount,
+          status: 'pending',
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Đồng bộ lại toàn bộ cược pending (dùng cho x2 / Tất tay)
+  async syncPendingBets({ userId, username, vipLevel = 1, betsMap }) {
+    if (!userId) return;
+    await this.clearPendingBets(userId);
+
+    const rows = Object.entries(betsMap)
+      .filter(([, amt]) => amt > 0)
+      .map(([zone, amt]) => ({
+        user_id: userId,
+        username,
+        vip_level: vipLevel,
+        bet_zone: zone,
+        bet_amount: amt,
+        status: 'pending',
+      }));
+
+    if (rows.length > 0) {
+      await supabase.from('xucxac_bets').insert(rows);
+    }
+  },
+
+  // Xóa các cược đang chờ của người chơi khi bấm Hủy
+  async clearPendingBets(userId) {
+    if (!userId) return;
+    await supabase
+      .from('xucxac_bets')
+      .delete()
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+  },
+
+  // Chốt phiên: cập nhật số dư user, lưu phiên vào xucxac_rounds và chốt trạng thái cược trên xucxac_bets
+  async settleRound({
+    user,
+    dice,
+    totalScore,
+    betSummary,
+    totalBetAmount,
+    isWin,
+    totalWinPayout,
+    newBalance,
+    winningZones,
+  }) {
+    const safeBalance = Math.max(0, newBalance);
+    const nextPlayed = (user.total_played || 0) + 1;
+    const nextWon = isWin ? (user.total_won || 0) + 1 : (user.total_won || 0);
+    const nextVip = Math.min(10, Math.max(1, Math.floor(safeBalance / 200000) + 1));
+
+    const { data: updatedUser, error: userErr } = await supabase
+      .from('xucxac_users')
+      .update({
+        balance: safeBalance,
+        total_played: nextPlayed,
+        total_won: nextWon,
+        vip_level: nextVip,
+        is_online: true,
+        last_seen_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (userErr) {
+      console.error('Lỗi cập nhật số dư user:', userErr);
+    }
+
+    const isBao = dice[0] === dice[1] && dice[1] === dice[2];
+    const roundPayload = {
+      user_id: user.id,
+      username: user.username,
+      dice_1: dice[0],
+      dice_2: dice[1],
+      dice_3: dice[2],
+      total_score: totalScore,
+      outcome_result: totalScore >= 11 ? 'TÀI' : 'XỈU',
+      outcome_parity: totalScore % 2 === 0 ? 'CHẴN' : 'LẺ',
+      is_bao: isBao,
+      bet_type: betSummary || 'NONE',
+      bet_amount: totalBetAmount || 0,
+      is_win: isWin,
+      payout: totalWinPayout || 0,
+    };
+
+    const { data: insertedRound, error: roundErr } = await supabase
+      .from('xucxac_rounds')
+      .insert([roundPayload])
+      .select()
+      .single();
+
+    if (roundErr) {
+      console.error('Lỗi lưu lịch sử phiên:', roundErr);
+    }
+
+    // Chốt các lệnh cược đang pending trên bàn (của user và các cược pending hiện có)
+    const { data: pendingBets } = await supabase
+      .from('xucxac_bets')
+      .select('*')
+      .eq('status', 'pending');
+
+    if (pendingBets && pendingBets.length > 0) {
+      await Promise.all(
+        pendingBets.map((bet) => {
+          const betPayout = calculateBetPayout(bet.bet_zone, Number(bet.bet_amount), winningZones);
+          const won = betPayout > 0;
+          return supabase
+            .from('xucxac_bets')
+            .update({
+              status: won ? 'won' : 'lost',
+              payout: betPayout,
+              round_id: insertedRound?.id || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', bet.id);
+        })
+      );
+    }
+
+    return {
+      updatedUser: updatedUser || {
+        ...user,
+        balance: safeBalance,
+        total_played: nextPlayed,
+        total_won: nextWon,
+        vip_level: nextVip,
+      },
+      insertedRound,
+    };
+  },
+
+  // Lấy lịch sử phiên thực từ Supabase
+  async getHistory(limit = 30) {
+    const { data, error } = await supabase
+      .from('xucxac_rounds')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Lỗi tải lịch sử phiên:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // Lấy danh sách lệnh cược trực tiếp từ Supabase
+  async getLiveBets(limit = 20) {
+    const { data, error } = await supabase
+      .from('xucxac_bets')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Lỗi tải danh sách cược realtime:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // Lấy bảng xếp hạng thực từ Supabase
+  async getLeaderboard(limit = 15) {
+    const { data, error } = await supabase
+      .from('xucxac_users')
+      .select('id, username, balance, vip_level, total_won, total_played, is_online')
+      .order('balance', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Lỗi tải bảng xếp hạng:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  // Nhập Giftcode thực qua RPC
+  async redeemCode(code, userId) {
+    const { data, error } = await supabase.rpc('xucxac_redeem_giftcode', {
+      p_user_id: userId,
+      p_code: code,
+    });
+
+    if (error) {
+      return { success: false, message: error.message || 'Lỗi xác thực mã quà tặng!' };
+    }
+    return data;
+  },
+
+  // Kiểm tra người chơi đã điểm danh hôm nay chưa
+  canClaimDaily(user) {
+    if (!user?.id) return false;
+    if (!user.last_daily_claim) return true;
+    return user.last_daily_claim < getVietnamTodayString();
+  },
+
+  // Nhận thưởng điểm danh qua RPC
+  async claimDailyBonus(userId) {
+    const { data, error } = await supabase.rpc('xucxac_claim_daily', {
+      p_user_id: userId,
+    });
+
+    if (error) {
+      return { success: false, message: error.message || 'Lỗi điểm danh nhận thưởng!' };
+    }
+    return data;
+  },
+
+  // Đăng ký kênh Supabase Realtime (postgres_changes + Presence)
+  subscribeRealtime({ onRoundInsert, onBetChange, onUserChange, onPresenceSync, currentUser }) {
+    const presenceKey =
+      currentUser?.id || `viewer_${Math.random().toString(36).slice(2, 10)}`;
+
+    const channel = supabase.channel('xucxac-casino-room', {
+      config: {
+        presence: {
+          key: presenceKey,
+        },
+      },
+    });
+
+    channel
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'xucxac_rounds' },
+        (payload) => {
+          onRoundInsert?.(payload.new);
         }
-
-        // Create new guest profile in Supabase
-        const guestName = 'NgườiChơi_' + Math.floor(1000 + Math.random() * 9000);
-        const { data: newProfile, error: insertError } = await supabase
-          .from('profiles')
-          .insert([{ username: guestName, balance: 100000 }])
-          .select()
-          .single();
-
-        if (newProfile && !insertError) {
-          localStorage.setItem('xucxac_user_uuid', newProfile.id);
-          return newProfile;
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'xucxac_bets' },
+        (payload) => {
+          onBetChange?.(payload);
         }
-      } catch (e) {
-        console.warn('Supabase profile fetch error, fallback to local storage:', e);
-      }
-    }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'xucxac_users' },
+        (payload) => {
+          onUserChange?.(payload);
+        }
+      )
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        onPresenceSync?.(state);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            user_id: currentUser?.id || null,
+            username: currentUser?.username || 'Khách xem bàn',
+            vip_level: currentUser?.vip_level || 1,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
 
-    // LocalStorage Fallback
-    const local = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch (e) {
-        // ignore
-      }
-    }
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(DEFAULT_PROFILE));
-    return DEFAULT_PROFILE;
-  },
-
-  // Update profile balance
-  async updateBalance(profile, newBalance, isWin) {
-    const updated = {
-      ...profile,
-      balance: Math.max(0, newBalance),
-      total_played: (profile.total_played || 0) + 1,
-      total_won: isWin ? (profile.total_won || 0) + 1 : (profile.total_won || 0),
-    };
-
-    if (isSupabaseConfigured && supabase && profile.id !== 'guest-player') {
-      try {
-        await supabase
-          .from('profiles')
-          .update({
-            balance: updated.balance,
-            total_played: updated.total_played,
-            total_won: updated.total_won,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', profile.id);
-      } catch (e) {
-        console.warn('Supabase update balance error:', e);
-      }
-    }
-
-    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(updated));
-    return updated;
-  },
-
-  // Save game round
-  async recordGame(roundData) {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('game_history').insert([roundData]);
-      } catch (e) {
-        console.warn('Supabase save round error:', e);
-      }
-    }
-
-    // Always keep recent 50 rounds locally for instant UI render
-    const localHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.HISTORY) || '[]');
-    localHistory.unshift({ ...roundData, id: Date.now().toString(), created_at: new Date().toISOString() });
-    if (localHistory.length > 50) localHistory.pop();
-    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(localHistory));
-    return localHistory;
-  },
-
-  // Get game history
-  async getHistory() {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('game_history')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(30);
-
-        if (data && !error && data.length > 0) return data;
-      } catch (e) {
-        console.warn('Supabase get history error:', e);
-      }
-    }
-
-    const localHistory = localStorage.getItem(STORAGE_KEYS.HISTORY);
-    return localHistory ? JSON.parse(localHistory) : [];
-  },
-
-  // Get leaderboard
-  async getLeaderboard() {
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('username, balance, total_won')
-          .order('balance', { ascending: false })
-          .limit(10);
-
-        if (data && !error && data.length > 0) return data;
-      } catch (e) {
-        console.warn('Supabase leaderboard fetch error:', e);
-      }
-    }
-
-    const local = localStorage.getItem(STORAGE_KEYS.LEADERBOARD);
-    return local ? JSON.parse(local) : DEFAULT_LEADERBOARD;
-  },
-
-  // Redeem Giftcode
-  async redeemCode(code, profile) {
-    const trimmed = code.trim().toUpperCase();
-    const redeemed = JSON.parse(localStorage.getItem(STORAGE_KEYS.REDEEMED_CODES) || '[]');
-    
-    if (redeemed.includes(trimmed)) {
-      return { success: false, message: 'Bạn đã nhận mã quà tặng này rồi!' };
-    }
-
-    const validCodes = {
-      'XUCXACMAYMAN': 50000,
-      'TANTHU': 100000,
-      'FREEXU': 25000,
-      'LUCKYDICE': 88888,
-    };
-
-    if (!validCodes[trimmed]) {
-      return { success: false, message: 'Mã giftcode không hợp lệ hoặc đã hết hạn!' };
-    }
-
-    const reward = validCodes[trimmed];
-    const newBalance = (profile.balance || 0) + reward;
-    const updatedProfile = await this.updateBalance(profile, newBalance, false);
-
-    redeemed.push(trimmed);
-    localStorage.setItem(STORAGE_KEYS.REDEEMED_CODES, JSON.stringify(redeemed));
-
-    return { 
-      success: true, 
-      reward, 
-      updatedProfile,
-      message: `Nhận thành công ${reward.toLocaleString('vi-VN')} Xu!` 
+    return () => {
+      supabase.removeChannel(channel);
     };
   },
-
-  // Daily Bonus
-  checkDailyBonus() {
-    const lastClaim = localStorage.getItem(STORAGE_KEYS.LAST_DAILY);
-    if (!lastClaim) return true;
-    const lastDate = new Date(lastClaim).toDateString();
-    const today = new Date().toDateString();
-    return lastDate !== today;
-  },
-
-  claimDailyBonus(profile) {
-    const reward = 20000;
-    const newBalance = (profile.balance || 0) + reward;
-    localStorage.setItem(STORAGE_KEYS.LAST_DAILY, new Date().toISOString());
-    return this.updateBalance(profile, newBalance, false);
-  }
 };

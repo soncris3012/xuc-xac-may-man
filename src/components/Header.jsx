@@ -1,31 +1,34 @@
 import React, { useState } from 'react';
 import {
-  Coins,
   Volume2,
   VolumeX,
   Music,
   Gift,
   Trophy,
   CalendarCheck,
-  Database,
-  Cloud,
+  Radio,
   BadgeDollarSign,
   Sparkles,
+  LogIn,
+  LogOut,
 } from 'lucide-react';
 import { sounds } from '../services/audio';
-import { isSupabaseConfigured, DBService } from '../services/supabase';
+import { DBService } from '../services/supabase';
 
 export default function Header({
   profile,
   onProfileUpdate,
+  onOpenAuth,
+  onLogout,
   onOpenGiftCode,
   onOpenLeaderboard,
   canClaimDaily,
-  setCanClaimDaily,
 }) {
   const [muted, setMuted] = useState(false);
   const [isBgmOn, setIsBgmOn] = useState(false);
   const [dailyClaiming, setDailyClaiming] = useState(false);
+
+  const isLoggedIn = Boolean(profile?.id);
 
   const toggleSound = () => {
     const next = !muted;
@@ -40,13 +43,22 @@ export default function Header({
   };
 
   const handleClaimDaily = async () => {
+    if (!isLoggedIn) {
+      onOpenAuth?.();
+      return;
+    }
     if (!canClaimDaily || dailyClaiming) return;
     setDailyClaiming(true);
-    const updated = await DBService.claimDailyBonus(profile);
-    sounds.playWin();
-    onProfileUpdate(updated);
-    setCanClaimDaily(false);
+    const res = await DBService.claimDailyBonus(profile.id);
     setDailyClaiming(false);
+
+    if (res?.success && res?.user) {
+      sounds.playWin();
+      onProfileUpdate(res.user);
+    } else {
+      sounds.playClick();
+      alert(res?.message || 'Bạn đã điểm danh hôm nay rồi!');
+    }
   };
 
   return (
@@ -65,21 +77,13 @@ export default function Header({
                 <span>XÚC XẮC MAY MẮN</span>
                 <Sparkles className="w-4 h-4 text-amber-400 inline" />
               </h1>
-              {/* Storage Mode Badge */}
+              {/* Realtime Status Badge */}
               <span
-                title={
-                  isSupabaseConfigured
-                    ? 'Đã kết nối cơ sở dữ liệu Supabase Cloud'
-                    : 'Đang chạy chế độ LocalStorage'
-                }
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                  isSupabaseConfigured
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                    : 'bg-slate-800 text-slate-400 border border-slate-700'
-                }`}
+                title="Kết nối trực tiếp Supabase Realtime"
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
               >
-                {isSupabaseConfigured ? <Cloud className="w-3 h-3" /> : <Database className="w-3 h-3" />}
-                <span className="hidden sm:inline">{isSupabaseConfigured ? 'Supabase' : 'Offline'}</span>
+                <Radio className="w-3 h-3 animate-pulse" />
+                <span className="hidden sm:inline">Live Realtime</span>
               </span>
             </div>
             <p className="text-[11px] text-amber-200/80 font-medium tracking-wide">
@@ -89,34 +93,57 @@ export default function Header({
         </div>
 
         {/* User Balance and Action Controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           {/* Daily Bonus Button */}
-          {canClaimDaily && (
+          {isLoggedIn && canClaimDaily && (
             <button
               onClick={handleClaimDaily}
               disabled={dailyClaiming}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 animate-pulse hover:opacity-95 transition"
             >
               <CalendarCheck className="w-3.5 h-3.5" />
-              <span>+20K$ Điểm Danh</span>
+              <span>{dailyClaiming ? 'Đang nhận...' : '+20K$ Điểm Danh'}</span>
             </button>
           )}
 
-          {/* User Balance Box with Dollar Icon */}
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border-2 border-amber-500/60 shadow-xl shadow-amber-950/40">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow">
-              <BadgeDollarSign className="w-4 h-4 text-slate-950" />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-amber-300 uppercase leading-none">
-                {profile.username || 'VIP Player'}
+          {/* Account & Balance Box OR Login/Register CTA */}
+          {isLoggedIn ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border-2 border-amber-500/60 shadow-xl shadow-amber-950/40">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow">
+                  <BadgeDollarSign className="w-4 h-4 text-slate-950" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-300 uppercase leading-none">
+                    <span>{profile.username}</span>
+                    <span className="px-1 py-0.2 rounded bg-amber-500/20 border border-amber-500/40 text-[9px] text-yellow-300">
+                      VIP {profile.vip_level || 1}
+                    </span>
+                  </div>
+                  <div className="text-sm sm:text-base font-black text-amber-400 leading-tight flex items-center gap-1 mt-0.5">
+                    <span>{Number(profile.balance || 0).toLocaleString('vi-VN')}</span>
+                    <span className="text-xs text-amber-300 font-extrabold">$</span>
+                  </div>
+                </div>
               </div>
-              <div className="text-sm sm:text-base font-black text-amber-400 leading-tight flex items-center gap-1">
-                <span>{(profile.balance || 0).toLocaleString('vi-VN')}</span>
-                <span className="text-xs text-amber-300 font-extrabold">$</span>
-              </div>
+
+              <button
+                onClick={onLogout}
+                title="Đăng xuất tài khoản"
+                className="p-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-rose-950/80 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 shadow transition"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
-          </div>
+          ) : (
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 transition transform active:scale-95"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Đăng Nhập / Đăng Ký</span>
+            </button>
+          )}
 
           {/* Giftcode Button */}
           <button
