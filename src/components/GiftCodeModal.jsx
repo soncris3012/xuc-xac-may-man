@@ -39,36 +39,33 @@ export default function GiftCodeModal({ isOpen, onClose, profile, onProfileUpdat
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-slate-900 border-2 border-amber-500/40 rounded-3xl p-6 shadow-2xl">
-        {/* Close Button */}
+      <div className="relative w-full max-w-md bg-gradient-to-b from-[#2b0b0b] to-[#120807] border border-[#b8923a]/50 rounded-3xl p-6 shadow-2xl">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full bg-slate-800/60 hover:bg-slate-800 transition"
+          className="absolute top-4 right-4 p-2 text-stone-400 hover:text-white rounded-full bg-black/40 hover:bg-black/70 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400">
+          <div className="p-3 bg-[#b8923a]/15 border border-[#b8923a]/40 rounded-2xl text-[#f5d061]">
             <Gift className="w-6 h-6" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Nhập Mã Giftcode</h3>
-            <p className="text-xs text-slate-400">Xác thực trực tiếp trên Supabase & nhận $ miễn phí</p>
+            <p className="text-xs text-stone-400">Xác thực trực tiếp trên Supabase & nhận $ miễn phí</p>
           </div>
         </div>
 
         {!profile?.id && (
-          <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold">
+          <div className="mb-4 p-3 rounded-xl bg-[#b8923a]/15 border border-[#b8923a]/40 text-[#f5d061] text-xs font-semibold">
             Bạn cần đăng nhập tài khoản để nhận thưởng từ Giftcode!
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleRedeem} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase">
+            <label className="block text-xs font-semibold text-stone-300 mb-1.5 uppercase">
               Mã Quà Tặng
             </label>
             <input
@@ -76,7 +73,7 @@ export default function GiftCodeModal({ isOpen, onClose, profile, onProfileUpdat
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="VD: XUCXACMAYMAN, TANTHU, FREEXU"
-              className="w-full px-4 py-3 rounded-xl bg-slate-800/90 border border-slate-700 text-white font-mono text-center tracking-wider text-base focus:outline-none focus:border-amber-400 transition"
+              className="w-full px-4 py-3 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-center tracking-wider text-base focus:outline-none focus:border-[#f5d061] transition"
               autoFocus
             />
           </div>
@@ -98,18 +95,18 @@ export default function GiftCodeModal({ isOpen, onClose, profile, onProfileUpdat
             </div>
           )}
 
-          <div className="bg-slate-800/40 border border-slate-800 p-3 rounded-xl text-xs text-slate-400">
-            <span className="font-bold text-amber-300">Mã khả dụng: </span>
-            <code className="bg-slate-800 px-1.5 py-0.5 rounded text-amber-200">XUCXACMAYMAN</code>,{' '}
-            <code className="bg-slate-800 px-1.5 py-0.5 rounded text-amber-200">TANTHU</code>,{' '}
-            <code className="bg-slate-800 px-1.5 py-0.5 rounded text-amber-200">FREEXU</code>,{' '}
-            <code className="bg-slate-800 px-1.5 py-0.5 rounded text-amber-200">VIPCASINO</code>
+          <div className="bg-black/40 border border-white/10 p-3 rounded-xl text-xs text-stone-400">
+            <span className="font-bold text-[#f5d061]">Mã khả dụng: </span>
+            <code className="bg-black/60 px-1.5 py-0.5 rounded text-amber-200">XUCXACMAYMAN</code>,{' '}
+            <code className="bg-black/60 px-1.5 py-0.5 rounded text-amber-200">TANTHU</code>,{' '}
+            <code className="bg-black/60 px-1.5 py-0.5 rounded text-amber-200">FREEXU</code>,{' '}
+            <code className="bg-black/60 px-1.5 py-0.5 rounded text-amber-200">VIPCASINO</code>
           </div>
 
           <button
             type="submit"
             disabled={loading || !code.trim()}
-            className="w-full py-3 rounded-xl font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="royal-gold-btn w-full py-3 rounded-xl font-black text-stone-950 border border-[#fce08b]/50 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             {!profile?.id ? 'Đăng Nhập Để Nhận' : loading ? 'Đang xác thực...' : 'Nhận Thưởng Ngay'}
           </button>

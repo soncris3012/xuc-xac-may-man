@@ -4,13 +4,22 @@
 
 @layer utilities {
   .text-glow {
-    text-shadow: 0 0 12px rgba(250, 204, 21, 0.6);
+    text-shadow: 0 0 14px rgba(245, 208, 97, 0.55);
   }
-  .box-glow {
-    box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+  .royal-table-felt {
+    background: radial-gradient(ellipse at 50% 45%, #5c1616 0%, #2b0909 52%, #150707 100%);
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.75), 0 25px 60px -15px rgba(0, 0, 0, 0.9);
   }
-  .box-glow-blue {
-    box-shadow: 0 0 25px rgba(59, 130, 246, 0.35);
+  .royal-gold-btn {
+    background: linear-gradient(180deg, #dfb74d 0%, #b58420 55%, #8a600c 100%);
+    box-shadow: 0 4px 14px rgba(181, 132, 32, 0.35), inset 0 1px 0 rgba(255, 244, 194, 0.45);
+  }
+  .royal-gold-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #ecc761 0%, #c89428 55%, #9d6f10 100%);
+  }
+  .royal-gold-pill {
+    background: linear-gradient(180deg, #e5be53 0%, #b88721 60%, #875e0c 100%);
+    box-shadow: 0 0 24px rgba(229, 190, 83, 0.25), inset 0 1px 1px rgba(255, 248, 210, 0.6);
   }
 }
 
@@ -20,12 +29,12 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #140908;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #4a2c1d;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #8a6220;
 }

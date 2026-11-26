@@ -29,6 +29,7 @@ export default function App() {
   const [liveBets, setLiveBets] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [presenceCount, setPresenceCount] = useState(1);
+  const [totalPool, setTotalPool] = useState(0);
 
   // Game State
   const [selectedChip, setSelectedChip] = useState(10000);
@@ -43,7 +44,6 @@ export default function App() {
   const [gameMode, setGameMode] = useState('manual');
   const [timerCount, setTimerCount] = useState(30);
 
-  // Refs to avoid stale closures inside timers / async callbacks
   const timerRef = useRef(null);
   const profileRef = useRef(profile);
   profileRef.current = profile;
@@ -60,14 +60,21 @@ export default function App() {
   const diceRef = useRef(dice);
   diceRef.current = dice;
 
+  const refreshPoolTotal = useCallback(async () => {
+    const leaders = await DBService.getLeaderboard(50);
+    const sum = leaders.reduce((acc, u) => acc + Number(u.balance || 0), 0);
+    setTotalPool(sum);
+  }, []);
+
   // 1. Khởi tạo dữ liệu thực từ Supabase khi mở trang
   useEffect(() => {
     let active = true;
     async function init() {
-      const [user, pastHistory, recentBets] = await Promise.all([
+      const [user, pastHistory, recentBets, leaders] = await Promise.all([
         DBService.getCurrentUser(),
         DBService.getHistory(30),
         DBService.getLiveBets(20),
+        DBService.getLeaderboard(50),
       ]);
 
       if (!active) return;
@@ -85,6 +92,7 @@ export default function App() {
       }
 
       setLiveBets(recentBets);
+      setTotalPool(leaders.reduce((acc, u) => acc + Number(u.balance || 0), 0));
       setAuthLoading(false);
     }
     init();
@@ -121,6 +129,7 @@ export default function App() {
       },
       onUserChange: (payload) => {
         setLeaderboardRefresh((n) => n + 1);
+        refreshPoolTotal();
         if (
           payload.new &&
           profileRef.current?.id === payload.new.id &&
@@ -150,12 +159,11 @@ export default function App() {
     return () => {
       unsubscribe?.();
     };
-  }, [profile?.id, profile?.username]);
+  }, [profile?.id, profile?.username, refreshPoolTotal]);
 
   const totalBetAmount = Object.values(currentBets).reduce((a, b) => a + b, 0);
   const canClaimDaily = DBService.canClaimDaily(profile);
 
-  // Đăng nhập / Đăng ký thành công
   const handleAuthSuccess = (user) => {
     setProfile(user);
     setIsAuthOpen(false);
@@ -163,7 +171,6 @@ export default function App() {
     setRoundNotification(null);
   };
 
-  // Đăng xuất
   const handleLogout = async () => {
     sounds.playClick();
     if (profile?.id) {
@@ -207,7 +214,6 @@ export default function App() {
 
     setLastWinningBets(wins);
 
-    // Tính tiền thưởng
     let totalWinPayout = 0;
     for (const [zone, betAmt] of Object.entries(activeBets)) {
       if (betAmt <= 0) continue;
@@ -232,7 +238,6 @@ export default function App() {
     const isWinner = totalWinPayout > 0;
     const newFinalBalance = currentBaseBal + totalWinPayout;
 
-    // Lưu trực tiếp kết quả phiên lên Supabase
     if (activeUser?.id) {
       const { updatedUser, insertedRound } = await DBService.settleRound({
         user: activeUser,
@@ -353,7 +358,6 @@ export default function App() {
     };
   }, [gameMode, triggerRoll]);
 
-  // Đặt cược & đồng bộ lên bảng Realtime
   const handlePlaceBet = async (zoneKey) => {
     if (isRolling || (!isRevealed && gameMode === 'manual')) return;
 
@@ -388,7 +392,6 @@ export default function App() {
     }
   };
 
-  // Hủy cược
   const handleClearBets = async () => {
     if (isRolling) return;
     sounds.playClick();
@@ -398,7 +401,6 @@ export default function App() {
     }
   };
 
-  // Nhân đôi cược
   const handleDoubleBets = async () => {
     if (isRolling || !profile?.id) return;
     const doubledTotal = totalBetAmount * 2;
@@ -422,7 +424,6 @@ export default function App() {
     });
   };
 
-  // Tất tay
   const handleAllIn = async () => {
     if (isRolling) return;
     if (!profile?.id) {
@@ -448,8 +449,41 @@ export default function App() {
     });
   };
 
+  // Bead road strip stats
+  const recentBeads = history.slice(0, 18);
+  const taiBeadCount = recentBeads.filter((r) => (r.total_score || r.dice_1 + r.dice_2 + r.dice_3) >= 11).length;
+  const xiuBeadCount = recentBeads.length - taiBeadCount;
+
+  // Center stage inside the 3-column Royal Sicbo Table
+  const centerStage = (
+    <div className="flex flex-col items-center justify-center w-full">
+      <BowlShaker
+        dice={dice}
+        isRolling={isRolling}
+        isRevealed={isRevealed}
+        onReveal={() => handleReveal()}
+        roundTimeLeft={gameMode === 'timed' ? timerCount : null}
+        statusMessage={
+          isRolling ? 'Đang Lắc...' : timerCount <= 6 && gameMode === 'timed' ? 'Đang nặn mở...' : ''
+        }
+      />
+
+      {gameMode === 'manual' && (
+        <button
+          type="button"
+          onClick={() => triggerRoll(false)}
+          disabled={isRolling || !isRevealed}
+          className="royal-gold-btn mt-3 px-6 py-2.5 rounded-full font-black text-xs sm:text-sm tracking-wider uppercase text-stone-950 border border-[#fce08b]/60 disabled:opacity-45 disabled:cursor-not-allowed transition transform active:scale-95 flex items-center justify-center gap-1.5"
+        >
+          <Play className="w-3.5 h-3.5 fill-stone-950" />
+          <span>{isRolling ? 'Đang Lắc...' : 'LẮC XÚC XẮC'}</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#021812] via-[#042018] to-slate-950 text-slate-100 selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#110807] via-[#190a09] to-[#0a0505] text-stone-100 selection:bg-amber-500 selection:text-stone-950">
       {/* Top Header */}
       <Header
         profile={profile}
@@ -459,139 +493,149 @@ export default function App() {
         onOpenGiftCode={() => setIsGiftCodeOpen(true)}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         canClaimDaily={canClaimDaily}
+        totalPool={totalPool}
+        roundCount={history.length}
       />
 
       {/* Banner nhắc đăng nhập nếu chưa đăng nhập */}
       {!authLoading && !profile?.id && (
-        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 text-center text-xs font-bold text-amber-300 flex items-center justify-center gap-2">
+        <div className="bg-[#b8923a]/15 border-b border-[#b8923a]/30 px-4 py-2 text-center text-xs font-bold text-[#f5d061] flex items-center justify-center gap-2">
           <span>Bạn đang xem bàn trực tiếp. Vui lòng đăng nhập để đặt cược & lưu điểm thời gian thực!</span>
           <button
             onClick={() => setIsAuthOpen(true)}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black hover:bg-amber-400 transition"
+            className="royal-gold-btn inline-flex items-center gap-1 px-3 py-1 rounded-full text-stone-950 font-black transition"
           >
             <LogIn className="w-3 h-3" /> Đăng Nhập Ngay
           </button>
         </div>
       )}
 
-      {/* Main Casino Floor */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column (Col 1-7): Shaker, Squeeze Bowl, Betting Table, Chips */}
-        <section className="lg:col-span-7 flex flex-col items-center gap-4">
-          {/* Mode Selector */}
-          <div className="w-full flex items-center justify-between bg-slate-950/80 border border-amber-500/30 p-1.5 rounded-2xl shadow-xl">
-            <button
-              onClick={() => setGameMode('manual')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
-                gameMode === 'manual'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Dices className="w-4 h-4" />
-              <span>Chơi Tự Do (Lắc Ngay)</span>
-            </button>
-
-            <button
-              onClick={() => setGameMode('timed')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition ${
-                gameMode === 'timed'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>Phiên Đếm Ngược (30s)</span>
-            </button>
+      {/* Main Royal Casino Container */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-5 py-4 space-y-4">
+        {/* Top Mode & Status Bar (matches sub-toolbar above Royal table) */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-stone-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="font-semibold">
+              {profile?.username ? `Dealer chào ${profile.username} • Đang nhận cược...` : 'Đang nhận cược...'}
+            </span>
           </div>
 
-          {/* Squeeze Bowl Shaker with 360 degree drag */}
-          <BowlShaker
-            dice={dice}
-            isRolling={isRolling}
-            isRevealed={isRevealed}
-            onReveal={() => handleReveal()}
-            roundTimeLeft={gameMode === 'timed' ? timerCount : null}
-            statusMessage={
-              isRolling ? 'Đang Lắc...' : timerCount <= 6 && gameMode === 'timed' ? 'Đang nặn mở...' : ''
-            }
-          />
-
-          {/* Toast Notification */}
-          {roundNotification && (
-            <div
-              className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 animate-bounce ${
-                roundNotification.type === 'win'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-2 border-emerald-500/50 shadow-xl shadow-emerald-950/60'
-                  : 'bg-slate-900 text-slate-300 border border-slate-700'
+          <div className="flex items-center gap-1.5 bg-[#150a09] border border-[#b8923a]/30 p-1 rounded-full">
+            <button
+              type="button"
+              onClick={() => setGameMode('manual')}
+              className={`py-1 px-3 rounded-full text-[11px] font-black flex items-center gap-1.5 transition ${
+                gameMode === 'manual'
+                  ? 'royal-gold-btn text-stone-950'
+                  : 'text-stone-400 hover:text-white'
               }`}
             >
-              <Sparkles className="w-4 h-4 text-yellow-400" />
-              <span>{roundNotification.text}</span>
-            </div>
-          )}
+              <Dices className="w-3.5 h-3.5" />
+              <span>Chơi Tự Do</span>
+            </button>
 
-          {/* Manual Roll Button */}
-          {gameMode === 'manual' && (
-            <div className="w-full flex items-center justify-center gap-3">
-              <button
-                onClick={() => triggerRoll(false)}
-                disabled={isRolling || !isRevealed}
-                className="w-full max-w-sm py-3.5 rounded-2xl font-black text-base tracking-wider uppercase bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 shadow-2xl shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-98 flex items-center justify-center gap-2 border-2 border-yellow-300"
-              >
-                <Play className="w-5 h-5 fill-slate-950" />
-                <span>{isRolling ? 'Đang Lắc Xúc Xắc...' : 'LẮC XÚC XẮC'}</span>
-              </button>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={() => setGameMode('timed')}
+              className={`py-1 px-3 rounded-full text-[11px] font-black flex items-center gap-1.5 transition ${
+                gameMode === 'timed'
+                  ? 'royal-gold-btn text-stone-950'
+                  : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Phiên 30s</span>
+            </button>
+          </div>
+        </div>
 
-          {/* Casino Chip Selector */}
-          <ChipSelector
-            selectedChip={selectedChip}
-            onSelectChip={setSelectedChip}
-            onClearBets={handleClearBets}
-            onDoubleBets={handleDoubleBets}
-            onAllIn={handleAllIn}
-            disabled={isRolling || (!isRevealed && gameMode === 'manual')}
-            hasActiveBets={totalBetAmount > 0}
-          />
+        {/* Toast Notification */}
+        {roundNotification && (
+          <div
+            className={`mx-auto max-w-md px-4 py-2 rounded-full text-xs sm:text-sm font-black flex items-center justify-center gap-2 animate-bounce ${
+              roundNotification.type === 'win'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-xl'
+                : 'bg-[#1c0f0d] text-stone-300 border border-white/10'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#f5d061]" />
+            <span>{roundNotification.text}</span>
+          </div>
+        )}
 
-          {/* Total Placed Bet Bar */}
-          {totalBetAmount > 0 && (
-            <div className="w-full text-center text-xs font-bold text-amber-300 flex items-center justify-center gap-1">
-              <span>Tổng cược của bạn:</span>
-              <span className="font-black text-amber-400 text-sm">
-                ${totalBetAmount.toLocaleString('vi-VN')}
-              </span>
-            </div>
-          )}
+        {/* MAIN 3-COLUMN ROYAL SICBO TABLE (TÀI | BÁT | XỈU) */}
+        <BettingTable
+          currentBets={currentBets}
+          onPlaceBet={handlePlaceBet}
+          lastWinningBets={lastWinningBets}
+          disabled={isRolling || (!isRevealed && gameMode === 'manual')}
+          liveBets={liveBets}
+          centerContent={centerStage}
+        />
 
-          {/* Betting Zones Table */}
-          <BettingTable
-            currentBets={currentBets}
-            onPlaceBet={handlePlaceBet}
-            lastWinningBets={lastWinningBets}
-            disabled={isRolling || (!isRevealed && gameMode === 'manual')}
-          />
-        </section>
+        {/* CASINO CHIP BAR & ALL-IN / x2 / HỦY */}
+        <ChipSelector
+          selectedChip={selectedChip}
+          onSelectChip={setSelectedChip}
+          onClearBets={handleClearBets}
+          onDoubleBets={handleDoubleBets}
+          onAllIn={handleAllIn}
+          disabled={isRolling || (!isRevealed && gameMode === 'manual')}
+          hasActiveBets={totalBetAmount > 0}
+        />
 
-        {/* Right Column (Col 8-12): Realtime Players Board & Soi Cầu Đường */}
-        <section className="lg:col-span-5 flex flex-col gap-4">
-          {/* Live Players Realtime Board */}
-          <LivePlayers
-            liveBets={liveBets}
-            onlineUsers={onlineUsers}
-            presenceCount={presenceCount}
-            currentUserId={profile?.id}
-          />
+        {/* COMPACT BEAD ROAD STRIP (matches horizontal dotted strip below chips in photo) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-[#150a09]/95 border border-[#b8923a]/25 px-4 py-2 rounded-2xl">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-full">
+            {recentBeads.length === 0 ? (
+              <span className="text-[11px] text-stone-500">Chưa có lịch sử cầu</span>
+            ) : (
+              [...recentBeads].reverse().map((r, idx) => {
+                const sum = r.total_score || r.dice_1 + r.dice_2 + r.dice_3;
+                const isTai = sum >= 11;
+                return (
+                  <span
+                    key={r.id || idx}
+                    title={`${r.dice_1}-${r.dice_2}-${r.dice_3} = ${sum} (${isTai ? 'TÀI' : 'XỈU'})`}
+                    className={`w-5 h-5 flex-shrink-0 rounded-full flex items-center justify-center text-[9px] font-black border ${
+                      isTai
+                        ? 'bg-gradient-to-tr from-rose-700 to-rose-500 text-white border-rose-300/60'
+                        : 'bg-stone-800 text-stone-200 border-stone-500/60'
+                    }`}
+                  >
+                    {isTai ? 'T' : 'X'}
+                  </span>
+                );
+              })
+            )}
+          </div>
 
-          {/* Cầu Đường (Trend Line Chart & Bead Road) */}
-          <HistoryBoard history={history} />
-        </section>
+          <div className="flex items-center gap-3 text-[11px] font-bold ml-auto">
+            <span className="text-[#f5d061]">Tài: {taiBeadCount}</span>
+            <span className="text-stone-300">Xỉu: {xiuBeadCount}</span>
+          </div>
+        </div>
+
+        {/* BOTTOM 2-COLUMN REALTIME & SOI CẦU DASHBOARD */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start pt-1">
+          <section className="lg:col-span-6">
+            <LivePlayers
+              liveBets={liveBets}
+              onlineUsers={onlineUsers}
+              presenceCount={presenceCount}
+              currentUserId={profile?.id}
+            />
+          </section>
+
+          <section className="lg:col-span-6">
+            <HistoryBoard history={history} />
+          </section>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-amber-500/20 bg-slate-950/90 py-4 text-center text-xs text-slate-500">
+      <footer className="w-full border-t border-[#b8923a]/20 bg-[#0d0605] py-3.5 text-center text-xs text-stone-500">
         <p>
           Game vui xúc xắc giải trí vui vẻ. Dữ liệu đồng bộ thời gian thực qua Supabase Realtime.
         </p>

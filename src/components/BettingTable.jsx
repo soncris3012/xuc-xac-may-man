@@ -1,14 +1,36 @@
-import React from 'react';
-import { Sparkles, DollarSign } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function BettingTable({
   currentBets = {},
   onPlaceBet,
   lastWinningBets = [],
   disabled = false,
+  liveBets = [],
+  centerContent = null,
 }) {
+  const [showExtraBets, setShowExtraBets] = useState(false);
+
   const getBetAmount = (key) => currentBets[key] || 0;
   const isWinning = (key) => lastWinningBets.includes(key);
+
+  // Compute live room bets per zone (pending bets or recent round bets)
+  const pending = liveBets.filter((b) => b.status === 'pending');
+  const poolSource = pending.length > 0 ? pending : [];
+
+  const getRoomStats = (zone) => {
+    const matching = poolSource.filter((b) => b.bet_zone === zone);
+    const total = matching.reduce((sum, b) => sum + Number(b.bet_amount || 0), 0);
+    const uniqueUsers = new Set(matching.map((b) => b.user_id || b.username)).size;
+    return { total, count: uniqueUsers };
+  };
+
+  const taiRoom = getRoomStats('TAI');
+  const xiuRoom = getRoomStats('XIU');
+
+  const extraActiveCount = Object.entries(currentBets).filter(
+    ([k, v]) => k !== 'TAI' && k !== 'XIU' && v > 0
+  ).length;
 
   const sumPayouts = [
     { sum: 4, rate: '1:50' },
@@ -29,161 +51,213 @@ export default function BettingTable({
 
   return (
     <div className="w-full space-y-3">
-      {/* Primary Zones: TÀI vs XỈU on Casino Felt */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        {/* XỈU (4 - 10) */}
-        <button
-          onClick={() => onPlaceBet('XIU')}
-          disabled={disabled}
-          className={`relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 transition-all transform active:scale-98 shadow-xl ${
-            isWinning('XIU')
-              ? 'bg-blue-600/40 border-blue-400 ring-4 ring-blue-500/60 scale-102 shadow-blue-500/40'
-              : 'bg-gradient-to-b from-slate-900/90 to-[#022c22]/90 hover:from-slate-800/90 hover:to-[#043e30]/90 border-amber-500/30 hover:border-blue-400'
-          } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <span className="text-3xl sm:text-4xl font-black text-blue-400 tracking-wider drop-shadow">
-            XỈU
-          </span>
-          <span className="text-xs font-bold text-slate-300 mt-1">
-            4 - 10 Điểm • Thưởng 1:1
-          </span>
+      {/* MAIN ROYAL 3-COLUMN STAGE: TÀI | BÁT Ở GIỮA | XỈU */}
+      <div className="royal-table-felt w-full rounded-3xl border border-[#b8923a]/50 p-4 sm:p-6 relative overflow-hidden">
+        {/* Subtle corner gold accents */}
+        <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-5 relative z-10">
+          {/* LEFT: TÀI (11 - 17) */}
+          <div
+            className={`md:col-span-4 flex flex-col items-center text-center p-4 rounded-2xl transition-all ${
+              isWinning('TAI')
+                ? 'bg-rose-500/15 ring-2 ring-[#f5d061] shadow-[0_0_25px_rgba(245,208,97,0.35)]'
+                : 'bg-black/20 border border-white/5'
+            }`}
+          >
+            <h2 className="text-4xl sm:text-5xl font-black tracking-wider text-[#f5d061] text-glow">
+              TÀI
+            </h2>
+            <p className="text-xs font-bold text-stone-300 mt-1">11 - 17</p>
+            <p className="text-[11px] font-semibold text-[#e5be53]/85 mt-0.5">Tỷ lệ 1 : 1</p>
 
-          {/* Active Bet Badge */}
-          {getBetAmount('XIU') > 0 && (
-            <div className="mt-2 px-3.5 py-1 rounded-full bg-blue-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-blue-900/50 flex items-center gap-1 animate-pulse border border-blue-300">
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>{getBetAmount('XIU').toLocaleString('vi-VN')}</span>
+            {/* Total Room Bet Box */}
+            <div className="w-full mt-3 bg-black/45 border border-white/10 rounded-xl px-3 py-2 flex flex-col items-center">
+              <span className="text-lg sm:text-xl font-black text-[#f5d061] tracking-wide">
+                {taiRoom.total.toLocaleString('vi-VN')}
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-stone-400 font-semibold mt-0.5">
+                <User className="w-3 h-3" /> {taiRoom.count}
+              </span>
             </div>
-          )}
-        </button>
 
-        {/* TÀI (11 - 17) */}
-        <button
-          onClick={() => onPlaceBet('TAI')}
-          disabled={disabled}
-          className={`relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 transition-all transform active:scale-98 shadow-xl ${
-            isWinning('TAI')
-              ? 'bg-rose-600/40 border-rose-400 ring-4 ring-rose-500/60 scale-102 shadow-rose-500/40'
-              : 'bg-gradient-to-b from-slate-900/90 to-[#022c22]/90 hover:from-slate-800/90 hover:to-[#043e30]/90 border-amber-500/30 hover:border-rose-400'
-          } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <span className="text-3xl sm:text-4xl font-black text-rose-500 tracking-wider drop-shadow">
-            TÀI
-          </span>
-          <span className="text-xs font-bold text-slate-300 mt-1">
-            11 - 17 Điểm • Thưởng 1:1
-          </span>
-
-          {/* Active Bet Badge */}
-          {getBetAmount('TAI') > 0 && (
-            <div className="mt-2 px-3.5 py-1 rounded-full bg-rose-600 text-white font-black text-xs sm:text-sm shadow-lg shadow-rose-900/50 flex items-center gap-1 animate-pulse border border-rose-300">
-              <DollarSign className="w-3.5 h-3.5" />
-              <span>{getBetAmount('TAI').toLocaleString('vi-VN')}</span>
+            {/* Player's Own Bet */}
+            <div className="mt-2.5 text-xs font-bold text-stone-300">
+              Cược của bạn:{' '}
+              <span className={getBetAmount('TAI') > 0 ? 'text-emerald-400 font-black' : 'text-stone-400'}>
+                {getBetAmount('TAI').toLocaleString('vi-VN')}
+              </span>
             </div>
-          )}
-        </button>
-      </div>
 
-      {/* Secondary Zones: CHẴN, BÃO (VIP TRIPLE), LẺ */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        {/* CHẴN */}
-        <button
-          onClick={() => onPlaceBet('CHAN')}
-          disabled={disabled}
-          className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
-            isWinning('CHAN')
-              ? 'bg-emerald-600/40 border-emerald-400 ring-2 ring-emerald-500'
-              : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800 hover:border-emerald-500/50'
-          } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <span className="text-lg sm:text-xl font-black text-emerald-400">CHẴN</span>
-          <span className="text-[11px] text-slate-400 font-semibold">1 : 1</span>
-          {getBetAmount('CHAN') > 0 && (
-            <div className="mt-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white font-black text-xs shadow">
-              ${getBetAmount('CHAN').toLocaleString('vi-VN')}
-            </div>
-          )}
-        </button>
-
-        {/* BÃO */}
-        <button
-          onClick={() => onPlaceBet('BAO')}
-          disabled={disabled}
-          className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
-            isWinning('BAO')
-              ? 'bg-purple-600/40 border-purple-400 ring-2 ring-purple-500'
-              : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800 hover:border-purple-500/50'
-          } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <div className="flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-lg sm:text-xl font-black text-purple-400">BÃO</span>
+            {/* Gold Action Button: ĐẶT TÀI */}
+            <button
+              type="button"
+              onClick={() => onPlaceBet('TAI')}
+              disabled={disabled}
+              className="royal-gold-btn w-full mt-3 py-2.5 rounded-xl text-sm font-black tracking-wider text-stone-950 uppercase border border-[#fce08b]/50 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-95"
+            >
+              ĐẶT TÀI
+            </button>
           </div>
-          <span className="text-[11px] text-amber-300 font-black">1 : 30</span>
-          {getBetAmount('BAO') > 0 && (
-            <div className="mt-1 px-2 py-0.5 rounded-full bg-purple-600 text-white font-black text-xs shadow">
-              ${getBetAmount('BAO').toLocaleString('vi-VN')}
-            </div>
-          )}
-        </button>
 
-        {/* LẺ */}
-        <button
-          onClick={() => onPlaceBet('LE')}
-          disabled={disabled}
-          className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
-            isWinning('LE')
-              ? 'bg-amber-600/40 border-amber-400 ring-2 ring-amber-500'
-              : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800 hover:border-amber-500/50'
-          } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        >
-          <span className="text-lg sm:text-xl font-black text-amber-400">LẺ</span>
-          <span className="text-[11px] text-slate-400 font-semibold">1 : 1</span>
-          {getBetAmount('LE') > 0 && (
-            <div className="mt-1 px-2 py-0.5 rounded-full bg-amber-600 text-white font-black text-xs shadow">
-              ${getBetAmount('LE').toLocaleString('vi-VN')}
+          {/* CENTER: BOWL SHAKER + CONTROLS */}
+          <div className="md:col-span-4 flex flex-col items-center justify-center">
+            {centerContent}
+          </div>
+
+          {/* RIGHT: XỈU (4 - 10) */}
+          <div
+            className={`md:col-span-4 flex flex-col items-center text-center p-4 rounded-2xl transition-all ${
+              isWinning('XIU')
+                ? 'bg-sky-500/15 ring-2 ring-[#f5d061] shadow-[0_0_25px_rgba(245,208,97,0.35)]'
+                : 'bg-black/20 border border-white/5'
+            }`}
+          >
+            <h2 className="text-4xl sm:text-5xl font-black tracking-wider text-stone-100 drop-shadow">
+              XỈU
+            </h2>
+            <p className="text-xs font-bold text-stone-300 mt-1">4 - 10</p>
+            <p className="text-[11px] font-semibold text-[#e5be53]/85 mt-0.5">Tỷ lệ 1 : 1</p>
+
+            {/* Total Room Bet Box */}
+            <div className="w-full mt-3 bg-black/45 border border-white/10 rounded-xl px-3 py-2 flex flex-col items-center">
+              <span className="text-lg sm:text-xl font-black text-[#f5d061] tracking-wide">
+                {xiuRoom.total.toLocaleString('vi-VN')}
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-stone-400 font-semibold mt-0.5">
+                <User className="w-3 h-3" /> {xiuRoom.count}
+              </span>
             </div>
-          )}
-        </button>
+
+            {/* Player's Own Bet */}
+            <div className="mt-2.5 text-xs font-bold text-stone-300">
+              Cược của bạn:{' '}
+              <span className={getBetAmount('XIU') > 0 ? 'text-emerald-400 font-black' : 'text-stone-400'}>
+                {getBetAmount('XIU').toLocaleString('vi-VN')}
+              </span>
+            </div>
+
+            {/* Gold Action Button: ĐẶT XỈU */}
+            <button
+              type="button"
+              onClick={() => onPlaceBet('XIU')}
+              disabled={disabled}
+              className="royal-gold-btn w-full mt-3 py-2.5 rounded-xl text-sm font-black tracking-wider text-stone-950 uppercase border border-[#fce08b]/50 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-95"
+            >
+              ĐẶT XỈU
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Tertiary: Dự đoán Tổng Điểm Chính Xác (4 -> 17) */}
-      <div className="bg-slate-900/80 border border-amber-500/30 p-2.5 rounded-2xl shadow-xl">
-        <div className="flex items-center justify-between px-1 mb-2">
-          <span className="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
-            <span>Cược Điểm Cụ Thể (4 - 17)</span>
+      {/* COMPACT EXPANDABLE SECONDARY BETS BAR (Chẵn / Lẻ / Bão / Tổng 4-17) */}
+      <div className="bg-[#150a09]/90 border border-[#b8923a]/25 rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowExtraBets((prev) => !prev)}
+          className="w-full px-4 py-2 flex items-center justify-between text-xs font-bold text-[#e5be53] hover:bg-white/5 transition"
+        >
+          <span className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-[#f5d061]" />
+            <span>Cửa Cược Mở Rộng (Chẵn / Lẻ • Bão 1:30 • Đoán Tổng 4-17)</span>
+            {extraActiveCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px]">
+                Đang đặt {extraActiveCount} cửa
+              </span>
+            )}
           </span>
-          <span className="text-[11px] text-amber-400/80 font-bold">Thưởng cao theo xác suất</span>
-        </div>
+          {showExtraBets ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
 
-        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-          {sumPayouts.map(({ sum, rate }) => {
-            const key = `SUM_${sum}`;
-            const betAmt = getBetAmount(key);
-            const win = isWinning(key);
-
-            return (
+        {(showExtraBets || extraActiveCount > 0) && (
+          <div className="p-3 pt-1 space-y-2.5 border-t border-[#b8923a]/15">
+            <div className="grid grid-cols-3 gap-2">
               <button
-                key={sum}
-                onClick={() => onPlaceBet(key)}
+                type="button"
+                onClick={() => onPlaceBet('CHAN')}
                 disabled={disabled}
-                className={`relative flex flex-col items-center justify-center p-1.5 sm:p-2 rounded-xl border transition-all ${
-                  win
-                    ? 'bg-amber-500/40 border-yellow-300 ring-2 ring-yellow-400 font-extrabold shadow-lg'
-                    : 'bg-slate-950/70 hover:bg-slate-800 border-slate-800 hover:border-amber-500/40'
-                } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                className={`p-2.5 rounded-xl border text-center transition ${
+                  isWinning('CHAN')
+                    ? 'bg-emerald-500/25 border-emerald-400 ring-2 ring-emerald-400/50'
+                    : 'bg-black/35 hover:bg-black/55 border-white/10 hover:border-[#b8923a]/50'
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <span className="text-sm sm:text-base font-black text-white">{sum}</span>
-                <span className="text-[10px] text-amber-300 font-bold">{rate}</span>
-                {betAmt > 0 && (
-                  <span className="mt-0.5 px-1 py-0.2 rounded bg-amber-600 text-[9px] text-white font-black truncate max-w-full">
-                    ${betAmt >= 1000 ? `${Math.round(betAmt / 1000)}k` : betAmt}
-                  </span>
+                <div className="text-sm font-black text-emerald-400">CHẴN</div>
+                <div className="text-[10px] text-stone-400">1 : 1</div>
+                {getBetAmount('CHAN') > 0 && (
+                  <div className="mt-1 text-[10px] font-black text-emerald-300">
+                    ${getBetAmount('CHAN').toLocaleString('vi-VN')}
+                  </div>
                 )}
               </button>
-            );
-          })}
-        </div>
+
+              <button
+                type="button"
+                onClick={() => onPlaceBet('BAO')}
+                disabled={disabled}
+                className={`p-2.5 rounded-xl border text-center transition ${
+                  isWinning('BAO')
+                    ? 'bg-purple-500/25 border-purple-400 ring-2 ring-purple-400/50'
+                    : 'bg-black/35 hover:bg-black/55 border-white/10 hover:border-[#b8923a]/50'
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="text-sm font-black text-purple-300">BÃO</div>
+                <div className="text-[10px] text-[#f5d061] font-bold">1 : 30</div>
+                {getBetAmount('BAO') > 0 && (
+                  <div className="mt-1 text-[10px] font-black text-purple-300">
+                    ${getBetAmount('BAO').toLocaleString('vi-VN')}
+                  </div>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onPlaceBet('LE')}
+                disabled={disabled}
+                className={`p-2.5 rounded-xl border text-center transition ${
+                  isWinning('LE')
+                    ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400/50'
+                    : 'bg-black/35 hover:bg-black/55 border-white/10 hover:border-[#b8923a]/50'
+                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <div className="text-sm font-black text-[#f5d061]">LẺ</div>
+                <div className="text-[10px] text-stone-400">1 : 1</div>
+                {getBetAmount('LE') > 0 && (
+                  <div className="mt-1 text-[10px] font-black text-[#f5d061]">
+                    ${getBetAmount('LE').toLocaleString('vi-VN')}
+                  </div>
+                )}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5">
+              {sumPayouts.map(({ sum, rate }) => {
+                const key = `SUM_${sum}`;
+                const betAmt = getBetAmount(key);
+                const win = isWinning(key);
+                return (
+                  <button
+                    type="button"
+                    key={sum}
+                    onClick={() => onPlaceBet(key)}
+                    disabled={disabled}
+                    className={`flex flex-col items-center justify-center p-1.5 rounded-xl border transition ${
+                      win
+                        ? 'bg-amber-500/35 border-[#f5d061] ring-2 ring-[#f5d061]'
+                        : 'bg-black/35 hover:bg-black/55 border-white/10 hover:border-[#b8923a]/40'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <span className="text-xs sm:text-sm font-black text-white">{sum}</span>
+                    <span className="text-[9px] text-[#e5be53] font-bold">{rate}</span>
+                    {betAmt > 0 && (
+                      <span className="mt-0.5 px-1 rounded bg-[#b88924] text-[9px] text-stone-950 font-black">
+                        ${betAmt >= 1000 ? `${Math.round(betAmt / 1000)}k` : betAmt}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

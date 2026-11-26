@@ -8,9 +8,9 @@ import {
   CalendarCheck,
   Radio,
   BadgeDollarSign,
-  Sparkles,
   LogIn,
   LogOut,
+  Plus,
 } from 'lucide-react';
 import { sounds } from '../services/audio';
 import { DBService } from '../services/supabase';
@@ -23,6 +23,8 @@ export default function Header({
   onOpenGiftCode,
   onOpenLeaderboard,
   canClaimDaily,
+  totalPool = 0,
+  roundCount = 0,
 }) {
   const [muted, setMuted] = useState(false);
   const [isBgmOn, setIsBgmOn] = useState(false);
@@ -62,132 +64,142 @@ export default function Header({
   };
 
   return (
-    <header className="w-full bg-slate-950/90 border-b-2 border-amber-500/40 sticky top-0 z-40 backdrop-blur-md shadow-2xl">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        {/* Logo and Casino Title */}
+    <header className="w-full bg-[#120807]/95 border-b border-[#b8923a]/30 sticky top-0 z-40 backdrop-blur-md shadow-2xl">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        {/* Left: Royal Title & Phiên / Live */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-400 to-yellow-200 p-0.5 shadow-xl shadow-amber-500/30 flex items-center justify-center">
-            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-              <span className="text-2xl drop-shadow">🎲</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xl sm:text-2xl">🎲</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#fce08b] via-[#e5be53] to-[#b58420]">
+                  XÚC XẮC MAY MẮN
+                </h1>
+                <span className="text-[10px] font-bold text-stone-400 hidden sm:inline">
+                  Phiên #{String(roundCount + 1).padStart(5, '0')}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px]">
+                <span className="inline-flex items-center gap-1 font-bold text-emerald-400">
+                  <Radio className="w-2.5 h-2.5 animate-pulse" /> Live Realtime
+                </span>
+                <span className="text-stone-600">•</span>
+                <span className="text-stone-400 hidden md:inline">Game vui giải trí</span>
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 drop-shadow flex items-center gap-1.5">
-                <span>XÚC XẮC MAY MẮN</span>
-                <Sparkles className="w-4 h-4 text-amber-400 inline" />
-              </h1>
-              {/* Realtime Status Badge */}
-              <span
-                title="Kết nối trực tiếp Supabase Realtime"
-                className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-              >
-                <Radio className="w-3 h-3 animate-pulse" />
-                <span className="hidden sm:inline">Live Realtime</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-amber-200/80 font-medium tracking-wide">
-              Casino Club • Game vui giải trí may mắn cùng bạn bè
-            </p>
           </div>
         </div>
 
-        {/* User Balance and Action Controls */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-          {/* Daily Bonus Button */}
+        {/* Center: Glowing Royal Pool Pill (matches center gold pill in reference UI) */}
+        <div className="hidden lg:flex items-center gap-2 royal-gold-pill px-5 py-1.5 rounded-full border border-[#fff2bd]/60">
+          <span className="text-[10px] font-black uppercase tracking-wider text-stone-950/80">
+            HŨ THƯỞNG
+          </span>
+          <span className="text-base font-black tracking-wider text-stone-950">
+            ${Number(totalPool || 0).toLocaleString('vi-VN')}
+          </span>
+        </div>
+
+        {/* Right: Balance Pill + Controls */}
+        <div className="flex flex-wrap items-center gap-2">
           {isLoggedIn && canClaimDaily && (
             <button
+              type="button"
               onClick={handleClaimDaily}
               disabled={dailyClaiming}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 animate-pulse hover:opacity-95 transition"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow animate-pulse transition"
             >
               <CalendarCheck className="w-3.5 h-3.5" />
-              <span>{dailyClaiming ? 'Đang nhận...' : '+20K$ Điểm Danh'}</span>
+              <span>{dailyClaiming ? '...' : '+20K$'}</span>
             </button>
           )}
 
-          {/* Account & Balance Box OR Login/Register CTA */}
           {isLoggedIn ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border-2 border-amber-500/60 shadow-xl shadow-amber-950/40">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow">
-                  <BadgeDollarSign className="w-4 h-4 text-slate-950" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-amber-300 uppercase leading-none">
-                    <span>{profile.username}</span>
-                    <span className="px-1 py-0.2 rounded bg-amber-500/20 border border-amber-500/40 text-[9px] text-yellow-300">
-                      VIP {profile.vip_level || 1}
-                    </span>
-                  </div>
-                  <div className="text-sm sm:text-base font-black text-amber-400 leading-tight flex items-center gap-1 mt-0.5">
-                    <span>{Number(profile.balance || 0).toLocaleString('vi-VN')}</span>
-                    <span className="text-xs text-amber-300 font-extrabold">$</span>
-                  </div>
-                </div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#1c0f0d] border border-[#b8923a]/50 shadow-inner">
+                <BadgeDollarSign className="w-4 h-4 text-[#f5d061]" />
+                <span className="text-xs sm:text-sm font-black text-[#f5d061]">
+                  {Number(profile.balance || 0).toLocaleString('vi-VN')}
+                </span>
+                <button
+                  type="button"
+                  onClick={onOpenGiftCode}
+                  title="Nhận thêm $ qua Giftcode"
+                  className="w-5 h-5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-stone-950 flex items-center justify-center transition"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1c0f0d] border border-white/10 text-[11px]">
+                <span className="font-bold text-stone-200">{profile.username}</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-[#b8923a]/20 text-[#f5d061] font-black text-[9px] border border-[#b8923a]/40">
+                  VIP {profile.vip_level || 1}
+                </span>
               </div>
 
               <button
+                type="button"
                 onClick={onLogout}
-                title="Đăng xuất tài khoản"
-                className="p-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-rose-950/80 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 shadow transition"
+                title="Đăng xuất"
+                className="p-2 rounded-full bg-[#1c0f0d] hover:bg-rose-950/70 text-stone-300 hover:text-rose-300 border border-white/10 transition"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
             <button
+              type="button"
               onClick={onOpenAuth}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 shadow-lg shadow-amber-500/30 transition transform active:scale-95"
+              className="royal-gold-btn flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-stone-950 border border-[#fce08b]/50 transition"
             >
-              <LogIn className="w-4 h-4" />
-              <span>Đăng Nhập / Đăng Ký</span>
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Đăng Nhập</span>
             </button>
           )}
 
-          {/* Giftcode Button */}
+          {/* Giftcode */}
           <button
+            type="button"
             onClick={onOpenGiftCode}
-            title="Nhập Giftcode nhận $"
-            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 shadow transition flex items-center gap-1"
+            title="Giftcode"
+            className="p-2 rounded-full bg-[#1c0f0d] hover:bg-[#2b1714] text-[#f5d061] border border-[#b8923a]/30 transition"
           >
-            <Gift className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">Giftcode</span>
+            <Gift className="w-3.5 h-3.5" />
           </button>
 
-          {/* Leaderboard Button */}
+          {/* Leaderboard */}
           <button
+            type="button"
             onClick={onOpenLeaderboard}
-            title="Bảng Xếp Hạng Đại Gia"
-            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 shadow transition flex items-center gap-1"
+            title="Bảng Xếp Hạng"
+            className="p-2 rounded-full bg-[#1c0f0d] hover:bg-[#2b1714] text-[#f5d061] border border-[#b8923a]/30 transition"
           >
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">Xếp Hạng</span>
+            <Trophy className="w-3.5 h-3.5" />
           </button>
 
-          {/* Casino BGM Music Toggle */}
+          {/* BGM */}
           <button
+            type="button"
             onClick={toggleBgm}
-            title={isBgmOn ? 'Tắt nhạc nền Casino' : 'Bật nhạc nền Casino Lounge'}
-            className={`p-2 rounded-xl border transition flex items-center gap-1 ${
+            title={isBgmOn ? 'Tắt nhạc Casino' : 'Bật nhạc Casino'}
+            className={`p-2 rounded-full border transition ${
               isBgmOn
-                ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-md ring-2 ring-amber-400/40'
-                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'
+                ? 'bg-[#b8923a]/25 border-[#f5d061] text-[#f5d061]'
+                : 'bg-[#1c0f0d] border-white/10 text-stone-400 hover:text-white'
             }`}
           >
-            <Music className={`w-4 h-4 ${isBgmOn ? 'animate-bounce text-amber-400' : ''}`} />
-            <span className="text-[10px] font-bold hidden md:inline">
-              {isBgmOn ? 'Nhạc Bật' : 'Nhạc Tắt'}
-            </span>
+            <Music className={`w-3.5 h-3.5 ${isBgmOn ? 'animate-bounce' : ''}`} />
           </button>
 
-          {/* Sound SFX Toggle */}
+          {/* SFX */}
           <button
+            type="button"
             onClick={toggleSound}
-            title={muted ? 'Bật hiệu ứng âm thanh' : 'Tắt hiệu ứng âm thanh'}
-            className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 transition"
+            title={muted ? 'Bật âm thanh' : 'Tắt âm thanh'}
+            className="p-2 rounded-full bg-[#1c0f0d] hover:bg-[#2b1714] border border-white/10 text-stone-300 transition"
           >
-            {muted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
+            {muted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
           </button>
         </div>
       </div>

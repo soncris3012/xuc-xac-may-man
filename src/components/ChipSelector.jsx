@@ -1,13 +1,13 @@
 import React from 'react';
-import { Trash2, Copy, Zap, DollarSign } from 'lucide-react';
 
 const CHIP_VALUES = [
-  { label: '$1K', value: 1000, color: 'from-slate-700 to-slate-900 border-slate-400' },
-  { label: '$5K', value: 5000, color: 'from-blue-700 to-blue-950 border-blue-400' },
-  { label: '$10K', value: 10000, color: 'from-emerald-700 to-emerald-950 border-emerald-400' },
-  { label: '$50K', value: 50000, color: 'from-amber-600 to-amber-950 border-amber-400' },
-  { label: '$100K', value: 100000, color: 'from-purple-700 to-purple-950 border-purple-400' },
-  { label: '$500K', value: 500000, color: 'from-rose-700 to-rose-950 border-rose-400' },
+  { label: '1K', value: 1000, bg: 'from-slate-600 to-slate-800 border-slate-300/70' },
+  { label: '5K', value: 5000, bg: 'from-rose-600 to-red-800 border-rose-300/70' },
+  { label: '10K', value: 10000, bg: 'from-blue-600 to-indigo-800 border-blue-300/70' },
+  { label: '50K', value: 50000, bg: 'from-emerald-600 to-green-800 border-emerald-300/70' },
+  { label: '100K', value: 100000, bg: 'from-purple-600 to-violet-900 border-purple-300/70' },
+  { label: '500K', value: 500000, bg: 'from-orange-500 to-amber-800 border-orange-300/70' },
+  { label: '1M', value: 1000000, bg: 'from-yellow-500 to-amber-700 border-yellow-200/80' },
 ];
 
 export default function ChipSelector({
@@ -20,27 +20,24 @@ export default function ChipSelector({
   hasActiveBets = false,
 }) {
   return (
-    <div className="w-full flex flex-wrap items-center justify-between gap-3 bg-slate-950/90 border-2 border-amber-500/40 p-3 rounded-2xl backdrop-blur shadow-2xl">
-      {/* Casino Dollar Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
-        <span className="text-xs font-black text-amber-300 uppercase tracking-wider mr-1 hidden sm:inline flex items-center gap-0.5">
-          <DollarSign className="w-3.5 h-3.5 inline text-amber-400" />
-          <span>Mức Cược:</span>
-        </span>
+    <div className="w-full flex flex-wrap items-center justify-between gap-3 bg-[#150a09]/95 border border-[#b8923a]/30 px-3.5 py-2.5 rounded-2xl shadow-xl">
+      {/* Circular Casino Chips */}
+      <div className="flex items-center gap-2 overflow-x-auto py-1 max-w-full">
         {CHIP_VALUES.map((chip) => {
           const isSelected = selectedChip === chip.value;
           return (
             <button
+              type="button"
               key={chip.value}
               onClick={() => onSelectChip(chip.value)}
               disabled={disabled}
-              className={`relative flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full font-black text-xs sm:text-sm text-white bg-gradient-to-b ${chip.color} border-2 shadow-xl transition-all transform active:scale-95 ${
+              className={`relative flex-shrink-0 flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full font-black text-[10px] sm:text-xs text-white bg-gradient-to-b ${chip.bg} border-2 shadow-lg transition-transform active:scale-95 ${
                 isSelected
-                  ? 'ring-4 ring-yellow-400 scale-110 z-10 -translate-y-1 shadow-yellow-500/50'
-                  : 'hover:scale-105 opacity-90 hover:opacity-100'
+                  ? 'ring-2 ring-[#f5d061] ring-offset-2 ring-offset-[#150a09] -translate-y-1 scale-110 z-10'
+                  : 'opacity-85 hover:opacity-100 hover:scale-105'
               } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-dashed border-yellow-200/60 flex items-center justify-center shadow-inner">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-white/60 flex items-center justify-center">
                 {chip.label}
               </div>
             </button>
@@ -48,36 +45,36 @@ export default function ChipSelector({
         })}
       </div>
 
-      {/* Action Buttons: Clear, Double, All-in */}
+      {/* Action Buttons: ALL-IN, x2 Cược, Hủy Cược (matching reference image) */}
       <div className="flex items-center gap-2 ml-auto">
         <button
-          onClick={onClearBets}
-          disabled={disabled || !hasActiveBets}
-          title="Hủy toàn bộ cược"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-          <span>Hủy</span>
-        </button>
-
-        <button
-          onClick={onDoubleBets}
-          disabled={disabled || !hasActiveBets}
-          title="Nhân đôi mức cược"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition"
-        >
-          <Copy className="w-3.5 h-3.5" />
-          <span>x2</span>
-        </button>
-
-        <button
+          type="button"
           onClick={onAllIn}
           disabled={disabled}
           title="Tất tay toàn bộ số dư $"
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white shadow-lg shadow-rose-900/40 disabled:opacity-40 disabled:cursor-not-allowed transition transform active:scale-95"
+          className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-b from-amber-500 to-orange-600 hover:brightness-110 text-stone-950 shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition transform active:scale-95"
         >
-          <Zap className="w-3.5 h-3.5 fill-white" />
-          <span>TẤT TAY</span>
+          ALL-IN
+        </button>
+
+        <button
+          type="button"
+          onClick={onDoubleBets}
+          disabled={disabled || !hasActiveBets}
+          title="Nhân đôi mức cược"
+          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#241311] hover:bg-[#341c19] text-[#f5d061] border border-[#b8923a]/40 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          x2 Cược
+        </button>
+
+        <button
+          type="button"
+          onClick={onClearBets}
+          disabled={disabled || !hasActiveBets}
+          title="Hủy toàn bộ cược"
+          className="px-3.5 py-2 rounded-xl text-xs font-black bg-gradient-to-b from-rose-600 to-red-700 hover:brightness-110 text-white shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          Hủy Cược
         </button>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { DBService } from '../services/supabase';
 import { sounds } from '../services/audio';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) {
-  const [mode, setMode] = useState(initialMode); // 'login' | 'register'
+  const [mode, setMode] = useState(initialMode);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -74,44 +74,41 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md bg-gradient-to-b from-[#042018] via-slate-900 to-slate-950 border-2 border-amber-500/50 rounded-3xl overflow-hidden shadow-2xl shadow-black">
-        {/* Close Button */}
+      <div className="relative w-full max-w-md bg-gradient-to-b from-[#2b0b0b] via-[#170908] to-[#0e0706] border border-[#b8923a]/60 rounded-3xl overflow-hidden shadow-2xl shadow-black">
         {onClose && (
           <button
             onClick={onClose}
             aria-label="Đóng"
-            className="absolute top-4 right-4 z-10 p-2 text-slate-300 hover:text-white rounded-full bg-slate-900/80 hover:bg-slate-800 border border-slate-700 transition"
+            className="absolute top-4 right-4 z-10 p-2 text-stone-300 hover:text-white rounded-full bg-black/50 hover:bg-black/80 border border-white/10 transition"
           >
             <X className="w-4 h-4" />
           </button>
         )}
 
-        {/* Casino Header Banner */}
-        <div className="bg-gradient-to-r from-emerald-950 via-[#063829] to-slate-900 px-6 py-5 border-b border-amber-500/30 text-center">
-          <div className="w-14 h-14 mx-auto mb-2.5 rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-400 to-yellow-200 p-0.5 shadow-xl shadow-amber-500/30">
-            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-3xl">
+        <div className="bg-gradient-to-r from-[#3f1111] via-[#280b0b] to-[#1a0808] px-6 py-5 border-b border-[#b8923a]/30 text-center">
+          <div className="w-14 h-14 mx-auto mb-2.5 rounded-2xl bg-gradient-to-tr from-[#b58420] via-[#e5be53] to-[#fce08b] p-0.5 shadow-xl shadow-amber-900/40">
+            <div className="w-full h-full bg-[#120807] rounded-[14px] flex items-center justify-center text-3xl">
               🎲
             </div>
           </div>
-          <h2 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 flex items-center justify-center gap-1.5">
-            <span>VIP CASINO ACCOUNT</span>
-            <Sparkles className="w-4 h-4 text-amber-400" />
+          <h2 className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#fce08b] via-[#f5d061] to-[#c89428] flex items-center justify-center gap-1.5">
+            <span>ROYAL CASINO CLUB</span>
+            <Sparkles className="w-4 h-4 text-[#f5d061]" />
           </h2>
-          <p className="text-xs text-emerald-200/80 mt-1">
+          <p className="text-xs text-stone-300 mt-1">
             Đăng nhập để lưu số dư, tham gia bảng xếp hạng và cược thời gian thực
           </p>
         </div>
 
-        {/* Tab Switcher */}
         <div className="px-6 pt-5">
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1.5 rounded-2xl border border-slate-800">
+          <div className="grid grid-cols-2 gap-1.5 bg-black/60 p-1.5 rounded-2xl border border-white/10">
             <button
               type="button"
               onClick={() => switchMode('login')}
               className={`py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
                 mode === 'login'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'royal-gold-btn text-stone-950'
+                  : 'text-stone-400 hover:text-white'
               }`}
             >
               <LogIn className="w-4 h-4" />
@@ -122,8 +119,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
               onClick={() => switchMode('register')}
               className={`py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition ${
                 mode === 'register'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-lg'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'royal-gold-btn text-stone-950'
+                  : 'text-stone-400 hover:text-white'
               }`}
             >
               <UserPlus className="w-4 h-4" />
@@ -132,23 +129,22 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           </div>
         </div>
 
-        {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {mode === 'register' && (
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2.5 text-xs text-emerald-300 font-semibold">
-              <BadgeDollarSign className="w-5 h-5 text-amber-400 flex-shrink-0" />
+            <div className="p-3 rounded-2xl bg-[#b8923a]/10 border border-[#b8923a]/30 flex items-center gap-2.5 text-xs text-stone-200 font-semibold">
+              <BadgeDollarSign className="w-5 h-5 text-[#f5d061] flex-shrink-0" />
               <span>
-                Tài khoản đăng ký mới được tặng ngay <b className="text-amber-300">$100,000</b> vốn khởi nghiệp!
+                Tài khoản đăng ký mới được tặng ngay <b className="text-[#f5d061]">$100,000</b> vốn khởi nghiệp!
               </span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-amber-300 uppercase mb-1.5">
+            <label className="block text-xs font-bold text-[#f5d061] uppercase mb-1.5">
               Tên Tài Khoản
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <User className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={username}
@@ -156,40 +152,40 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
                 placeholder="Nhập tên (3-20 ký tự, không dấu cách)"
                 maxLength={20}
                 autoFocus
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-700 focus:border-amber-400 text-white text-sm font-semibold focus:outline-none transition"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/60 border border-white/15 focus:border-[#f5d061] text-white text-sm font-semibold focus:outline-none transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-amber-300 uppercase mb-1.5">
+            <label className="block text-xs font-bold text-[#f5d061] uppercase mb-1.5">
               Mật Khẩu
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Nhập mật khẩu (tối thiểu 4 ký tự)"
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-700 focus:border-amber-400 text-white text-sm font-semibold focus:outline-none transition"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/60 border border-white/15 focus:border-[#f5d061] text-white text-sm font-semibold focus:outline-none transition"
               />
             </div>
           </div>
 
           {mode === 'register' && (
             <div>
-              <label className="block text-xs font-bold text-amber-300 uppercase mb-1.5">
+              <label className="block text-xs font-bold text-[#f5d061] uppercase mb-1.5">
                 Xác Nhận Mật Khẩu
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Nhập lại mật khẩu"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-700 focus:border-amber-400 text-white text-sm font-semibold focus:outline-none transition"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/60 border border-white/15 focus:border-[#f5d061] text-white text-sm font-semibold focus:outline-none transition"
                 />
               </div>
             </div>
@@ -212,7 +208,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, initialMode 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl font-black text-sm tracking-wider uppercase bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 text-slate-950 shadow-xl shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-98"
+            className="royal-gold-btn w-full py-3.5 rounded-xl font-black text-sm tracking-wider uppercase text-stone-950 border border-[#fce08b]/50 disabled:opacity-50 disabled:cursor-not-allowed transition transform active:scale-98"
           >
             {loading
               ? 'Đang kết nối Supabase...'
