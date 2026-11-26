@@ -80,9 +80,85 @@ export const DBService = {
     return data;
   },
 
+  // Đăng nhập bằng OAuth (Google, Facebook) qua Supabase Auth
+  async loginWithOAuth(provider) {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      return { success: false, message: error.message || `Không thể đăng nhập bằng ${provider}!` };
+    }
+    return { success: true };
+  },
+
+  // Đồng bộ user từ Supabase Auth sang bảng xucxac_users
+  async syncAuthUser() {
+    const { data, error } = await supabase.rpc('xucxac_sync_auth_user');
+    if (error) {
+      return { success: false, message: error.message || 'Lỗi đồng bộ tài khoản!' };
+    }
+    if (data?.success && data?.user?.id) {
+      localStorage.setItem(USER_SESSION_KEY, data.user.id);
+    }
+    return data;
+  },
+
+  // Đăng nhập bằng Email & Mật khẩu (Supabase Auth)
+  async loginWithEmail(email, password) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      return { success: false, message: error.message || 'Email hoặc mật khẩu không đúng!' };
+    }
+    const synced = await this.syncAuthUser();
+    if (!synced?.success) return synced;
+    return { success: true, user: synced.user, message: 'Đăng nhập thành công!' };
+  },
+
+  // Đăng ký bằng Email & Mật khẩu (Supabase Auth)
+  async registerWithEmail(email, password) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      return { success: false, message: error.message || 'Không thể đăng ký bằng email này!' };
+    }
+    if (data?.session) {
+      const synced = await this.syncAuthUser();
+      if (!synced?.success) return synced;
+      return { success: true, user: synced.user, message: 'Đăng ký thành công! Tặng bạn 100,000đ.' };
+    }
+    return {
+      success: true,
+      needsConfirmation: true,
+      message: 'Đăng ký thành công! Vui lòng kiểm tra hộp thư email để xác nhận tài khoản.',
+    };
+  },
+
+  // Gửi email đặt lại mật khẩu
+  async resetPassword(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) {
+      return { success: false, message: error.message || 'Không thể gửi email khôi phục!' };
+    }
+    return {
+      success: true,
+      message: 'Đã gửi liên kết đặt lại mật khẩu. Vui lòng kiểm tra email của bạn!',
+    };
+  },
+
   // Đăng xuất
   async logout(userId) {
     localStorage.removeItem(USER_SESSION_KEY);
+    await supabase.auth.signOut().catch(() => {});
     if (!userId) return;
     await supabase
       .from('xucxac_users')
@@ -93,8 +169,16 @@ export const DBService = {
       .eq('id', userId);
   },
 
-  // Tải thông tin người chơi hiện tại từ phiên lưu cục bộ
+  // Tải thông tin người chơi hiện tại từ Supabase Auth hoặc phiên lưu cục bộ
   async getCurrentUser() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session?.user) {
+      const synced = await this.syncAuthUser();
+      if (synced?.success && synced?.user) {
+        return { ...synced.user, is_online: true };
+      }
+    }
+
     const storedId = localStorage.getItem(USER_SESSION_KEY);
     if (!storedId) return null;
 

@@ -9,7 +9,7 @@ import LivePlayers from './components/LivePlayers';
 import GiftCodeModal from './components/GiftCodeModal';
 import LeaderboardModal from './components/LeaderboardModal';
 import AuthModal from './components/AuthModal';
-import { DBService, SUM_MULTIPLIERS } from './services/supabase';
+import { DBService, SUM_MULTIPLIERS, supabase } from './services/supabase';
 import { sounds } from './services/audio';
 import { Play, Sparkles, Clock, Dices, LogIn } from 'lucide-react';
 
@@ -112,8 +112,20 @@ export default function App() {
     }
     init();
 
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!active) return;
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        const res = await DBService.syncAuthUser();
+        if (active && res?.success && res?.user) {
+          setProfile(res.user);
+          setIsAuthOpen(false);
+        }
+      }
+    });
+
     return () => {
       active = false;
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
 
