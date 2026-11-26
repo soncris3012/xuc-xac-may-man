@@ -13,6 +13,21 @@ import { DBService, SUM_MULTIPLIERS } from './services/supabase';
 import { sounds } from './services/audio';
 import { Play, Sparkles, Clock, Dices, LogIn } from 'lucide-react';
 
+// CSPRNG unbiased die roll (1-6) using Web Crypto API + rejection sampling
+function rollSecureDie() {
+  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    const limit = Math.floor(0x100000000 / 6) * 6;
+    const buf = new Uint32Array(1);
+    while (true) {
+      window.crypto.getRandomValues(buf);
+      if (buf[0] < limit) {
+        return (buf[0] % 6) + 1;
+      }
+    }
+  }
+  return Math.floor(Math.random() * 6) + 1;
+}
+
 export default function App() {
   // Auth & User Profile State (Thực tế từ Supabase)
   const [profile, setProfile] = useState(null);
@@ -315,9 +330,9 @@ export default function App() {
       sounds.playDiceShake();
 
       setTimeout(() => {
-        const d1 = Math.floor(Math.random() * 6) + 1;
-        const d2 = Math.floor(Math.random() * 6) + 1;
-        const d3 = Math.floor(Math.random() * 6) + 1;
+        const d1 = rollSecureDie();
+        const d2 = rollSecureDie();
+        const d3 = rollSecureDie();
 
         setDice([d1, d2, d3]);
         diceRef.current = [d1, d2, d3];
