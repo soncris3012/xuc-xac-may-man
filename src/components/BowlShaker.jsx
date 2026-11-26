@@ -121,10 +121,10 @@ export default function BowlShaker({
           <div className="w-full h-full rounded-full bg-gradient-to-b from-[#1d1110] via-[#120909] to-[#0b0606] border-2 border-[#c59b38]/60 p-4 flex items-center justify-center relative overflow-hidden shadow-inner">
             <div className="absolute inset-3 rounded-full border border-[#d4af37]/15 pointer-events-none"></div>
 
-            {/* 3 Dice inside Plate */}
-            <div className="flex items-center justify-center gap-2.5 z-10">
+            {/* 3 Dice inside Plate — 3D cubes, slightly larger for visibility */}
+            <div className="flex items-center justify-center gap-2 z-10" style={{ overflow: 'visible' }}>
               <Dice value={dice[0]} isRolling={isRolling} size="sm" />
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-2">
                 <Dice value={dice[1]} isRolling={isRolling} size="sm" />
                 <Dice value={dice[2]} isRolling={isRolling} size="sm" />
               </div>
