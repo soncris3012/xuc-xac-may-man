@@ -634,13 +634,6 @@ export default function App() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full border-t border-[#b8923a]/20 bg-[#0d0605] py-3.5 text-center text-xs text-stone-500">
-        <p>
-          Game vui xúc xắc giải trí vui vẻ. Dữ liệu đồng bộ thời gian thực qua Supabase Realtime.
-        </p>
-      </footer>
-
       {/* Modals */}
       <AuthModal
         isOpen={isAuthOpen}
